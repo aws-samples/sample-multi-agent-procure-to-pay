@@ -1,0 +1,84 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Local git commit checks mirroring the security probe scanners.
+# Setup:  pip install pre-commit && pre-commit install
+# Run manually against everything:  pre-commit run --all-files
+#
+# These are the same tools used in the security scan (gitleaks, bandit,
+# semgrep, checkov) so contributors catch findings before they commit.
+minimum_pre_commit_version: "3.5.0"
+
+repos:
+  # --- Secret scanning (all files) ---
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        # Config (allowlist for documented placeholders) lives in .gitleaks.toml.
+
+  # --- Python security linter ---
+  # Uses the repo's existing INI config so its skips (B311 for synthetic demo
+  # data) and exclude_dirs are honored.
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        args: ["--ini", ".bandit"]
+        # Test files use asserts (B101) by design; exclude them here.
+        exclude: ^(.*/tests/|.*/test_.*\.py$)
+
+  # --- Multi-language SAST (the tool behind most probe findings) ---
+  - repo: https://github.com/semgrep/semgrep
+    rev: v1.90.0
+    hooks:
+      - id: semgrep
+        # semgrep's opentelemetry-instrumentation dep needs pkg_resources,
+        # which setuptools >= 81 no longer ships.
+        additional_dependencies: ["setuptools<81"]
+        # Baseline of accepted findings (documented, out of the fix scope for
+        # this sample) so the gate blocks NEW issues without failing on known
+        # ones — same philosophy as the .bandit B311 skip. Rationale:
+        #  - no-new-privileges / writable-filesystem-service: the docker-compose
+        #    files are local-test / demo scaffolding, not production stacks.
+        #  - python-logger-credential-disclosure: reviewed — these log status
+        #    words / exception TYPES / resource names, never secret values.
+        #  - non-literal-import: intentional dynamic imports in the adapter layer.
+        args:
+          - "--config"
+          - "auto"
+          - "--error"
+          - "--quiet"
+          - "--exclude-rule"
+          - "yaml.docker-compose.security.no-new-privileges.no-new-privileges"
+          - "--exclude-rule"
+          - "yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service"
+          - "--exclude-rule"
+          - "python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure"
+          - "--exclude-rule"
+          - "python.lang.security.audit.non-literal-import.non-literal-import"
+        # frontend/src/components/ui/* are vendored shadcn/Radix primitives whose
+        # contract is to forward arbitrary props (`<Comp {...props} />`). The
+        # react-props-spreading rule fires on every one of them by design, so we
+        # scope those generated wrappers out of the scan. All first-party
+        # application code is still checked. Build output/deps are in .semgrepignore.
+        exclude: ^frontend/src/components/ui/
+
+  # --- IaC / Dockerfile scanning ---
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: 3.2.257
+    hooks:
+      - id: checkov
+        # Scope to the infra + Docker surface the probe flagged.
+        files: ^(infra/|backend/Dockerfile)
+        args: ["--quiet", "--compact"]
+
+  # --- License headers on first-party source ---
+  - repo: local
+    hooks:
+      - id: license-headers
+        name: MIT-0 license headers
+        entry: python3 utilities/scripts/add_license_headers.py --check
+        language: system
+        pass_filenames: false
+        always_run: true

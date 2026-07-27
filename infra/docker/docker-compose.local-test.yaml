@@ -1,0 +1,108 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+version: "3.8"
+
+# Local test: validates that ERPNext containers start and serve requests.
+# Usage: docker compose -f docker-compose.local-test.yaml up -d
+#        curl http://localhost:8080/api/method/frappe.ping
+#        docker compose -f docker-compose.local-test.yaml down -v
+
+# nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+x-common: &common
+  image: frappe/erpnext:v15
+  restart: unless-stopped
+  depends_on:
+    configurator:
+      condition: service_completed_successfully
+  volumes:
+    - sites:/home/frappe/frappe-bench/sites
+    - logs:/home/frappe/frappe-bench/logs
+
+services:
+  # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+  configurator:
+    image: frappe/erpnext:v15
+    restart: "no"
+    entrypoint: ["bash", "-c"]
+    command:
+      - >
+        ls -1 apps > sites/apps.txt;
+        bench set-config -g db_host db;
+        bench set-config -g db_port 3306;
+        bench set-config -g redis_cache "redis://redis:6379/0";
+        bench set-config -g redis_queue "redis://redis:6379/1";
+        bench set-config -g redis_socketio "redis://redis:6379/2";
+        bench set-config -g socketio_port 9000;
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  backend:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+
+  frontend:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+    command: ["nginx-entrypoint.sh"]
+    environment:
+      BACKEND: backend:8000
+      SOCKETIO: websocket:9000
+      FRAPPE_SITE_NAME_HEADER: $$host
+      UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
+      UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
+      UPSTREAM_REAL_IP_RECURSIVE: "off"
+      PROXY_READ_TIMEOUT: "120"
+      CLIENT_MAX_BODY_SIZE: "50m"
+    ports:
+      - "8080:8080"
+
+  websocket:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+    command: ["node", "/home/frappe/frappe-bench/apps/frappe/socketio.js"]
+
+  queue-short:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+    command: ["bench", "worker", "--queue", "short,default"]
+
+  scheduler:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+    command: ["bench", "schedule"]
+
+  # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+      - --skip-innodb-read-only-compressed
+    # Local-only stack (never deployed). Override the test password by setting
+    # MYSQL_ROOT_PASSWORD in your shell before `docker compose up`.
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-localtest}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: mysqladmin ping -h localhost --password=$${MYSQL_ROOT_PASSWORD:-localtest}
+      interval: 5s
+      retries: 10
+
+  # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+volumes:
+  sites:
+  logs:
+  db-data:

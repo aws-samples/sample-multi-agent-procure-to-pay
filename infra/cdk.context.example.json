@@ -1,0 +1,9 @@
+{
+  "hostedZoneName": "your-domain.example.com",
+  "domainPrefix": "erp",
+  "frontendDomainPrefix": "",
+  "externalDns": false,
+  "erpnextAdminPassword": "REPLACE_WITH_STRONG_PASSWORD",
+  "dbRootPassword": "REPLACE_WITH_STRONG_PASSWORD",
+  "erpnextImage": "frappe/erpnext:v15"
+}

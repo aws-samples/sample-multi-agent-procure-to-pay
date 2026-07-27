@@ -1,0 +1,8 @@
+[
+  {
+    "header": {"MBLNR": "GR-60001", "EBELN": "PO-50001", "BUDAT": "20240318", "LIFNR": "SUP-001"},
+    "items": [
+      {"ZEILE": "0001", "MATNR": "ITEM-001", "MENGE": 10, "MEINS": "EA", "EBELN": "PO-50001", "EBELP": "00010"}
+    ]
+  }
+]

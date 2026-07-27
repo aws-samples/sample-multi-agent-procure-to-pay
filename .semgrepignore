@@ -1,0 +1,13 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Paths semgrep should not scan: build output, dependencies, generated assets.
+node_modules/
+frontend/node_modules/
+frontend/dist/
+infra/cdk.out/
+infra/dist/
+backend/seed/output/
+backend/.bedrock_agentcore/
+**/__pycache__/
+*.min.js

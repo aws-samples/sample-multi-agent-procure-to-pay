@@ -1,0 +1,42 @@
+{
+  "cost_centers": [
+    {"name": "Manufacturing", "parent": "Main"},
+    {"name": "Maintenance", "parent": "Main"},
+    {"name": "Safety", "parent": "Main"},
+    {"name": "Engineering", "parent": "Main"},
+    {"name": "Operations", "parent": "Main"}
+  ],
+  "fiscal_year": "2026",
+  "budgets": [
+    {
+      "cost_center": "Manufacturing",
+      "account": "Cost of Goods Sold",
+      "budget_amount": 500000,
+      "_description": "Core manufacturing materials and components"
+    },
+    {
+      "cost_center": "Maintenance",
+      "account": "Cost of Goods Sold",
+      "budget_amount": 200000,
+      "_description": "Plant maintenance, MRO supplies, welding consumables"
+    },
+    {
+      "cost_center": "Safety",
+      "account": "Cost of Goods Sold",
+      "budget_amount": 100000,
+      "_description": "PPE, safety equipment, compliance items"
+    },
+    {
+      "cost_center": "Engineering",
+      "account": "Cost of Goods Sold",
+      "budget_amount": 350000,
+      "_description": "Sensors, control components, precision instruments"
+    },
+    {
+      "cost_center": "Operations",
+      "account": "Cost of Goods Sold",
+      "budget_amount": 250000,
+      "_description": "Consumables, abrasives, general operations materials"
+    }
+  ]
+}

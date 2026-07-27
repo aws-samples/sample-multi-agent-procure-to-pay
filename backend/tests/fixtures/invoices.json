@@ -1,0 +1,36 @@
+[
+  {
+    "header": {
+      "BELNR": "INV-70001",
+      "LIFNR": "SUP-001",
+      "EBELN": "PO-50001",
+      "XBLNR": "VENDOR-INV-001",
+      "BUDAT": "20240320",
+      "RMWWR": 2500.0,
+      "WAERS": "USD",
+      "STATU": "EXTRACTED",
+      "ZTERM": "NT30",
+      "ZFBDT": "20240320",
+      "_status": "APPROVE",
+      "_decided_by": "sarah.johnson",
+      "_decided_at": "2026-04-09T17:42:01.655265",
+      "_agent_match_result": "MATCHED",
+      "_agent_confidence": "0.98",
+      "_agent_reasoning": "All line items match",
+      "_agent_auto_approved": false,
+      "_agent_analyzed_at": "2026-04-09T17:42:01.240157"
+    },
+    "items": [
+      {
+        "BUZEI": "001",
+        "MATNR": "ITEM-001",
+        "TXZ01": "Office Chairs",
+        "MENGE": 10,
+        "MEINS": "EA",
+        "WRBTR": 2500.0,
+        "EBELN": "PO-50001",
+        "EBELP": "00010"
+      }
+    ]
+  }
+]

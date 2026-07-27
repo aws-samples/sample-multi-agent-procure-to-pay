@@ -1,0 +1,51 @@
+[
+  {
+    "BANFN": "PR-10001",
+    "ERNAM": "SJOHNSON",
+    "BADAT": "20240301",
+    "total": 2500.0,
+    "_status": "APPROVE",
+    "items": [
+      {
+        "BNFPO": "00010",
+        "MATNR": "ITEM-001",
+        "TXZ01": "Office Chairs",
+        "MENGE": 10,
+        "MEINS": "EA",
+        "PREIS": 250.0,
+        "WERKS": "1000",
+        "EKGRP": "001",
+        "BANPR": "N"
+      }
+    ],
+    "_test_field": "test_value",
+    "_decided_by": "sarah.johnson",
+    "_decided_at": "2026-04-09T17:42:07.467671",
+    "_agent_recommendation": "APPROVE",
+    "_agent_risk_level": "LOW",
+    "_agent_confidence": "0.95",
+    "_agent_reasoning": "All checks passed",
+    "_agent_auto_approved": true,
+    "_agent_analyzed_at": "2026-04-09T17:42:00.512891"
+  },
+  {
+    "BANFN": "PR-10002",
+    "ERNAM": "MCHEN",
+    "BADAT": "20240305",
+    "total": 75000.0,
+    "_status": "PENDING",
+    "items": [
+      {
+        "BNFPO": "00010",
+        "MATNR": "ITEM-002",
+        "TXZ01": "Server Rack",
+        "MENGE": 5,
+        "MEINS": "EA",
+        "PREIS": 15000.0,
+        "WERKS": "1000",
+        "EKGRP": "003",
+        "BANPR": "N"
+      }
+    ]
+  }
+]
