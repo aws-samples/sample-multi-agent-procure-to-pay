@@ -1,0 +1,10 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+[bandit]
+# B311 (pseudo-random generators): the only random.* usage in this repo is in
+# utilities/simulation/, which generates synthetic demo data (narrative variety,
+# fake supplier names, jittered timestamps). These calls are not used for
+# tokens, IDs, or any security boundary. Suppressed at the directory level so
+# real future uses elsewhere still get flagged.
+exclude_dirs = ./.git,./node_modules,./infra/cdk.out,./frontend/node_modules,./frontend/dist
+skips = B311

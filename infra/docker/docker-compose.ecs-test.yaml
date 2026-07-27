@@ -1,0 +1,167 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+version: "3.8"
+
+# Local test that mirrors the exact ECS Fargate task architecture.
+# Tests the configurator init → backend/websocket/frontend pattern.
+#
+# Usage:
+#   docker compose -f docker-compose.ecs-test.yaml up -d
+#   # Wait ~30s for configurator + services to start
+#   curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/method/frappe.ping
+#   docker compose -f docker-compose.ecs-test.yaml logs -f
+#   docker compose -f docker-compose.ecs-test.yaml down -v
+
+# nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+x-image: &image
+  image: frappe/erpnext:v15
+
+services:
+  # ============================================================
+  # Infrastructure (replaces RDS + ElastiCache in ECS)
+  # ============================================================
+
+  # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+      - --skip-innodb-read-only-compressed
+    # Test-only stack (never deployed). Override the test password by setting
+    # MYSQL_ROOT_PASSWORD in your shell before `docker compose up`.
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-localtest}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: mysqladmin ping -h localhost --password=$${MYSQL_ROOT_PASSWORD:-localtest}
+      interval: 5s
+      retries: 10
+
+  # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  # ============================================================
+  # Configurator (init container — runs bench set-config, exits)
+  # This mirrors the ECS configurator init container pattern.
+  # ============================================================
+
+  configurator:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *image
+    restart: "no"
+    entrypoint: ["bash", "-c"]
+    command:
+      - >
+        [ -f sites/common_site_config.json ] || echo "{}" > sites/common_site_config.json &&
+        ls -1 apps > sites/apps.txt &&
+        bench set-config -g db_host db &&
+        bench set-config -gp db_port 3306 &&
+        bench set-config -g redis_cache "redis://redis:6379/0" &&
+        bench set-config -g redis_queue "redis://redis:6379/1" &&
+        bench set-config -g redis_socketio "redis://redis:6379/1" &&
+        bench set-config -gp socketio_port 9000 &&
+        echo "Configurator done"
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # ============================================================
+  # Web Task containers (mirrors ECS web task definition)
+  # ============================================================
+
+  # Backend: uses image default CMD (gunicorn on :8000)
+  backend:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *image
+    # NO command override — uses image default (gunicorn)
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+
+  # Websocket: Socket.IO on :9000
+  websocket:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *image
+    command:
+      - node
+      - /home/frappe/frappe-bench/apps/frappe/socketio.js
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+
+  # Frontend: nginx on :8080 (ALB target in ECS)
+  frontend:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *image
+    command:
+      - nginx-entrypoint.sh
+    environment:
+      BACKEND: backend:8000
+      SOCKETIO: websocket:9000
+      FRAPPE_SITE_NAME_HEADER: $$host
+      UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
+      UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
+      UPSTREAM_REAL_IP_RECURSIVE: "off"
+      PROXY_READ_TIMEOUT: "120"
+      CLIENT_MAX_BODY_SIZE: "50m"
+    ports:
+      - "8080:8080"
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      backend:
+        condition: service_started
+      websocket:
+        condition: service_started
+
+  # ============================================================
+  # Worker Task containers (mirrors ECS worker task definition)
+  # ============================================================
+
+  queue-short:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *image
+    command: bench worker --queue short,default
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+
+  queue-long:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *image
+    command: bench worker --queue long,default,short
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+
+  scheduler:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *image
+    command: bench schedule
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+
+volumes:
+  sites:
+  db-data:

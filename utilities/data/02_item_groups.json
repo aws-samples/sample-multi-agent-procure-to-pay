@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Raw Materials",
+    "parent": "All Item Groups"
+  },
+  {
+    "name": "Fasteners & Hardware",
+    "parent": "Raw Materials"
+  },
+  {
+    "name": "Hydraulic Components",
+    "parent": "Raw Materials"
+  },
+  {
+    "name": "Bearings & Seals",
+    "parent": "Raw Materials"
+  },
+  {
+    "name": "Electrical Components",
+    "parent": "Raw Materials"
+  },
+  {
+    "name": "Safety Equipment",
+    "parent": "All Item Groups"
+  },
+  {
+    "name": "Lubricants & Chemicals",
+    "parent": "All Item Groups"
+  },
+  {
+    "name": "Conveyor Parts",
+    "parent": "Raw Materials"
+  },
+  {
+    "name": "Office Supplies",
+    "parent": "All Item Groups"
+  },
+  {
+    "name": "Packaging Materials",
+    "parent": "All Item Groups"
+  },
+  {
+    "name": "MRO Supplies",
+    "parent": "All Item Groups"
+  },
+  {
+    "name": "Spare Parts",
+    "parent": "All Item Groups"
+  },
+  {
+    "name": "Components",
+    "parent": "All Item Groups"
+  },
+  {
+    "name": "Consumables",
+    "parent": "All Item Groups"
+  }
+]

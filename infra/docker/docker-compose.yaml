@@ -1,0 +1,148 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+version: "3.8"
+
+# ERPNext v15 production docker-compose
+# Based on https://github.com/frappe/frappe_docker/blob/main/compose.yaml
+
+# nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+x-common: &common
+  image: frappe/erpnext:v15
+  restart: unless-stopped
+  depends_on:
+    configurator:
+      condition: service_completed_successfully
+  volumes:
+    - sites:/home/frappe/frappe-bench/sites
+    - logs:/home/frappe/frappe-bench/logs
+
+services:
+  # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+  configurator:
+    image: frappe/erpnext:v15
+    restart: "no"
+    entrypoint:
+      - bash
+      - -c
+    command:
+      - >
+        ls -1 apps > sites/apps.txt;
+        bench set-config -g db_host db;
+        bench set-config -g db_port 3306;
+        bench set-config -g redis_cache "redis://redis-cache:6379";
+        bench set-config -g redis_queue "redis://redis-queue:6379";
+        bench set-config -g redis_socketio "redis://redis-socketio:6379";
+        bench set-config -g socketio_port 9000;
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      REDIS_CACHE: "redis://redis-cache:6379"
+      REDIS_QUEUE: "redis://redis-queue:6379"
+      REDIS_SOCKETIO: "redis://redis-socketio:6379"
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_started
+      redis-queue:
+        condition: service_started
+      redis-socketio:
+        condition: service_started
+
+  backend:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+
+  frontend:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+    command:
+      - nginx-entrypoint.sh
+    environment:
+      BACKEND: backend:8000
+      SOCKETIO: websocket:9000
+      FRAPPE_SITE_NAME_HEADER: $$host
+      UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
+      UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
+      UPSTREAM_REAL_IP_RECURSIVE: "off"
+      PROXY_READ_TIMEOUT: "120"
+      CLIENT_MAX_BODY_SIZE: "50m"
+    ports:
+      - "${ERPNEXT_PORT:-8080}:8080"
+
+  websocket:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+    command:
+      - node
+      - /home/frappe/frappe-bench/apps/frappe/socketio.js
+
+  queue-short:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+    command: bench worker --queue short,default
+
+  queue-default:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+    command: bench worker --queue default
+
+  queue-long:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+    command: bench worker --queue long,default,short
+
+  scheduler:
+    # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+    <<: *common
+    command: bench schedule
+
+  # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+      - --skip-innodb-read-only-compressed
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: mysqladmin ping -h localhost --password=${DB_ROOT_PASSWORD}
+      interval: 5s
+      retries: 10
+
+  # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+  redis-cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-cache-data:/data
+
+  # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+  redis-queue:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-queue-data:/data
+
+  # nosemgrep -- no-new-privileges,writable-filesystem-service: demo/local-test compose, not a production stack
+  redis-socketio:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-socketio-data:/data
+
+volumes:
+  sites:
+  logs:
+  db-data:
+  redis-cache-data:
+  redis-queue-data:
+  redis-socketio-data:

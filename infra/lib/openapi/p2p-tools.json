@@ -1,0 +1,647 @@
+[
+  {
+    "name": "list_suppliers",
+    "description": "List all suppliers in the ERP system. Optionally filter by status or group.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Filter by status: active, blocked, inactive"
+        },
+        "group": {
+          "type": "string",
+          "description": "Filter by supplier group"
+        }
+      }
+    }
+  },
+  {
+    "name": "get_supplier",
+    "description": "Get detailed information for a specific supplier by ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "supplier_id": {
+          "type": "string",
+          "description": "supplier_id"
+        }
+      },
+      "required": [
+        "supplier_id"
+      ]
+    }
+  },
+  {
+    "name": "list_items",
+    "description": "List all items/materials in the catalog. Optionally filter by group or search term.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "description": "Filter by item group"
+        },
+        "search": {
+          "type": "string",
+          "description": "Search by item name"
+        }
+      }
+    }
+  },
+  {
+    "name": "get_item",
+    "description": "Get detailed information for a specific item/material by ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "item_id": {
+          "type": "string",
+          "description": "item_id"
+        }
+      },
+      "required": [
+        "item_id"
+      ]
+    }
+  },
+  {
+    "name": "list_requisitions",
+    "description": "List purchase requisitions (material requests). Filter by status or requester.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Filter by status"
+        },
+        "requester": {
+          "type": "string",
+          "description": "Filter by requester"
+        },
+        "detail": {
+          "type": "boolean",
+          "description": "Enrich with line items (slower). Set false for summaries."
+        }
+      }
+    }
+  },
+  {
+    "name": "create_requisition",
+    "description": "Create and submit a new purchase requisition (material request).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "required_date": {
+          "type": "string",
+          "description": "Required Date"
+        },
+        "purpose": {
+          "type": "string",
+          "description": "Purpose"
+        },
+        "department": {
+          "type": "string",
+          "description": "Department"
+        },
+        "cost_center": {
+          "type": "string",
+          "description": "Cost Center"
+        },
+        "line_items": {
+          "type": "array",
+          "description": "Line Items",
+          "items": {
+            "type": "object",
+            "properties": {
+              "line_number": {
+                "type": "integer",
+                "description": "Line Number"
+              },
+              "item_id": {
+                "type": "string",
+                "description": "Item Id"
+              },
+              "item_name": {
+                "type": "string",
+                "description": "Item Name"
+              },
+              "quantity": {
+                "type": "number",
+                "description": "Quantity"
+              },
+              "unit_of_measure": {
+                "type": "string",
+                "description": "Unit Of Measure"
+              },
+              "unit_price": {
+                "type": "string",
+                "description": "Unit Price"
+              },
+              "currency": {
+                "type": "string",
+                "description": "Currency"
+              },
+              "delivery_date": {
+                "type": "string",
+                "description": "Delivery Date"
+              },
+              "preferred_supplier_id": {
+                "type": "string",
+                "description": "Preferred Supplier Id"
+              },
+              "warehouse": {
+                "type": "string",
+                "description": "Warehouse"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "line_items"
+      ]
+    }
+  },
+  {
+    "name": "get_requisition",
+    "description": "Get a purchase requisition with all line items by ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "requisition_id": {
+          "type": "string",
+          "description": "requisition_id"
+        }
+      },
+      "required": [
+        "requisition_id"
+      ]
+    }
+  },
+  {
+    "name": "update_requisition_status",
+    "description": "Update a requisition's status in ERPNext (e.g., mark as Ordered after PO creation).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "requisition_id": {
+          "type": "string",
+          "description": "requisition_id"
+        },
+        "status": {
+          "type": "string",
+          "description": "status"
+        }
+      },
+      "required": [
+        "requisition_id"
+      ]
+    }
+  },
+  {
+    "name": "stop_requisition",
+    "description": "Stop a Material Request in ERPNext (used when a human rejects it).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "requisition_id": {
+          "type": "string",
+          "description": "requisition_id"
+        }
+      },
+      "required": [
+        "requisition_id"
+      ]
+    }
+  },
+  {
+    "name": "list_purchase_orders",
+    "description": "List purchase orders. Filter by supplier or status.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "supplier_id": {
+          "type": "string",
+          "description": "Filter by supplier"
+        },
+        "status": {
+          "type": "string",
+          "description": "Filter by status"
+        }
+      }
+    }
+  },
+  {
+    "name": "create_purchase_order",
+    "description": "Create and submit a new purchase order.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "supplier_id": {
+          "type": "string",
+          "description": "Supplier Id"
+        },
+        "delivery_date": {
+          "type": "string",
+          "description": "Delivery Date"
+        },
+        "payment_terms": {
+          "type": "string",
+          "description": "Payment Terms"
+        },
+        "line_items": {
+          "type": "array",
+          "description": "Line Items",
+          "items": {
+            "type": "object",
+            "properties": {
+              "line_number": {
+                "type": "integer",
+                "description": "Line Number"
+              },
+              "item_id": {
+                "type": "string",
+                "description": "Item Id"
+              },
+              "item_name": {
+                "type": "string",
+                "description": "Item Name"
+              },
+              "quantity": {
+                "type": "number",
+                "description": "Quantity"
+              },
+              "unit_of_measure": {
+                "type": "string",
+                "description": "Unit Of Measure"
+              },
+              "unit_price": {
+                "type": "number",
+                "description": "Unit Price"
+              },
+              "line_amount": {
+                "type": "number",
+                "description": "Line Amount"
+              },
+              "delivery_date": {
+                "type": "string",
+                "description": "Delivery Date"
+              },
+              "received_quantity": {
+                "type": "string",
+                "description": "Received Quantity"
+              },
+              "billed_amount": {
+                "type": "string",
+                "description": "Billed Amount"
+              },
+              "requisition_id": {
+                "type": "string",
+                "description": "Requisition Id"
+              },
+              "warehouse": {
+                "type": "string",
+                "description": "Warehouse"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "supplier_id",
+        "line_items"
+      ]
+    }
+  },
+  {
+    "name": "get_purchase_order",
+    "description": "Get a purchase order with all line items by ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "description": "order_id"
+        }
+      },
+      "required": [
+        "order_id"
+      ]
+    }
+  },
+  {
+    "name": "list_receipts",
+    "description": "List goods receipts (purchase receipts). Filter by related purchase order.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "description": "Filter by purchase order ID"
+        }
+      }
+    }
+  },
+  {
+    "name": "create_receipt",
+    "description": "Create and submit a new goods receipt (purchase receipt).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "description": "Order Id"
+        },
+        "supplier_id": {
+          "type": "string",
+          "description": "Supplier Id"
+        },
+        "line_items": {
+          "type": "array",
+          "description": "Line Items",
+          "items": {
+            "type": "object",
+            "properties": {
+              "line_number": {
+                "type": "integer",
+                "description": "Line Number"
+              },
+              "item_id": {
+                "type": "string",
+                "description": "Item Id"
+              },
+              "item_name": {
+                "type": "string",
+                "description": "Item Name"
+              },
+              "quantity_received": {
+                "type": "number",
+                "description": "Quantity Received"
+              },
+              "unit_of_measure": {
+                "type": "string",
+                "description": "Unit Of Measure"
+              },
+              "rejected_quantity": {
+                "type": "string",
+                "description": "Rejected Quantity"
+              },
+              "order_id": {
+                "type": "string",
+                "description": "Order Id"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "order_id",
+        "supplier_id",
+        "line_items"
+      ]
+    }
+  },
+  {
+    "name": "get_receipt",
+    "description": "Get a goods receipt with all line items by ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "description": "receipt_id"
+        }
+      },
+      "required": [
+        "receipt_id"
+      ]
+    }
+  },
+  {
+    "name": "list_invoices",
+    "description": "List purchase invoices. Filter by supplier or status.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "supplier_id": {
+          "type": "string",
+          "description": "Filter by supplier"
+        },
+        "status": {
+          "type": "string",
+          "description": "Filter by status"
+        }
+      }
+    }
+  },
+  {
+    "name": "create_invoice",
+    "description": "Create and submit a new purchase invoice.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "supplier_id": {
+          "type": "string",
+          "description": "Supplier Id"
+        },
+        "vendor_invoice_number": {
+          "type": "string",
+          "description": "Vendor Invoice Number"
+        },
+        "invoice_date": {
+          "type": "string",
+          "description": "Invoice Date"
+        },
+        "due_date": {
+          "type": "string",
+          "description": "Due Date"
+        },
+        "order_id": {
+          "type": "string",
+          "description": "Order Id"
+        },
+        "line_items": {
+          "type": "array",
+          "description": "Line Items",
+          "items": {
+            "type": "object",
+            "properties": {
+              "line_number": {
+                "type": "integer",
+                "description": "Line Number"
+              },
+              "item_id": {
+                "type": "string",
+                "description": "Item Id"
+              },
+              "item_name": {
+                "type": "string",
+                "description": "Item Name"
+              },
+              "quantity": {
+                "type": "number",
+                "description": "Quantity"
+              },
+              "unit_price": {
+                "type": "number",
+                "description": "Unit Price"
+              },
+              "line_amount": {
+                "type": "number",
+                "description": "Line Amount"
+              },
+              "order_id": {
+                "type": "string",
+                "description": "Order Id"
+              },
+              "receipt_id": {
+                "type": "string",
+                "description": "Receipt Id"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "supplier_id",
+        "line_items"
+      ]
+    }
+  },
+  {
+    "name": "get_invoice",
+    "description": "Get a purchase invoice with all line items by ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "invoice_id": {
+          "type": "string",
+          "description": "invoice_id"
+        }
+      },
+      "required": [
+        "invoice_id"
+      ]
+    }
+  },
+  {
+    "name": "extract_invoice_document",
+    "description": "Extract structured invoice data from a PDF or image document stored in S3\nusing Amazon Textract AnalyzeExpense. Returns vendor name, invoice number,\ndates, amounts, PO reference, line items, and confidence scores.\n\nConfidence tiers:\n- AUTO_ACCEPT (>=95%): all critical fields high confidence\n- REVIEW (80-95%): some fields uncertain, Bedrock validates\n- MANUAL (<80%): flag for human review",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "description": "S3 bucket containing the invoice document"
+        },
+        "key": {
+          "type": "string",
+          "description": "S3 object key (file path) of the invoice PDF or image"
+        }
+      },
+      "required": [
+        "bucket",
+        "key"
+      ]
+    }
+  },
+  {
+    "name": "list_payments",
+    "description": "List all payment entries.",
+    "inputSchema": {
+      "type": "object"
+    }
+  },
+  {
+    "name": "create_payment",
+    "description": "Create and submit a new payment entry.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "supplier_id": {
+          "type": "string",
+          "description": "Supplier Id"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount"
+        },
+        "mode_of_payment": {
+          "type": "string",
+          "description": "Mode Of Payment"
+        },
+        "invoice_id": {
+          "type": "string",
+          "description": "Invoice Id"
+        },
+        "deductions": {
+          "type": "array",
+          "description": "Deductions",
+          "items": {
+            "type": "object",
+            "properties": {
+              "account": {
+                "type": "string",
+                "description": "Account"
+              },
+              "cost_center": {
+                "type": "string",
+                "description": "Cost Center"
+              },
+              "amount": {
+                "type": "number",
+                "description": "Amount"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "supplier_id",
+        "amount"
+      ]
+    }
+  },
+  {
+    "name": "get_spend_summary",
+    "description": "Get aggregate procurement spend metrics: total spend, order counts, invoice counts, overdue items.",
+    "inputSchema": {
+      "type": "object"
+    }
+  },
+  {
+    "name": "get_supplier_performance",
+    "description": "Get supplier performance data: order counts, total spend, delivery rates per supplier.",
+    "inputSchema": {
+      "type": "object"
+    }
+  },
+  {
+    "name": "get_budget_status",
+    "description": "Get budget vs actual spend for cost centers. Shows budget amount, actual spend, remaining, and utilization percentage.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "cost_center": {
+          "type": "string",
+          "description": "Filter by cost center name"
+        }
+      }
+    }
+  },
+  {
+    "name": "list_cost_centers",
+    "description": "List available cost centers for budget allocation.",
+    "inputSchema": {
+      "type": "object"
+    }
+  },
+  {
+    "name": "list_payment_terms",
+    "description": "List available payment terms templates (e.g. Net 30, 2/10 Net 30). Use exact names when creating purchase orders.",
+    "inputSchema": {
+      "type": "object"
+    }
+  }
+]

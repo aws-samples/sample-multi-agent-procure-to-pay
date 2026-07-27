@@ -1,0 +1,8 @@
+[
+  {
+    "header": {"EBELN": "PO-50001", "LIFNR": "SUP-001", "BSART": "NB", "BEDAT": "20240310", "WAERS": "USD", "RLWRT": 2500.00},
+    "items": [
+      {"EBELP": "00010", "MATNR": "ITEM-001", "TXZ01": "Office Chairs", "MENGE": 10, "MEINS": "EA", "NETPR": 250.00, "NETWR": 2500.00, "WERKS": "1000", "EINDT": "20240320"}
+    ]
+  }
+]

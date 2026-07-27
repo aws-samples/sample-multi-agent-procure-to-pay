@@ -1,0 +1,441 @@
+[
+  {
+    "supplier_name": "Acme Industrial Supply",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 30",
+    "tax_id": "98-1867825",
+    "supplier_details": "Specializes in: Fasteners & Hardware, MRO Supplies",
+    "address": {
+      "address_title": "Acme Industrial Supply",
+      "address_line1": "433 Jill Springs",
+      "city": "Chicago",
+      "state": "IL",
+      "pincode": "62234",
+      "country": "United States",
+      "phone": "296-500-1338",
+      "email_id": "sales@acmeindustri.com"
+    },
+    "_meta": {
+      "categories": [
+        "Fasteners & Hardware",
+        "MRO Supplies"
+      ]
+    }
+  },
+  {
+    "supplier_name": "Global Fasteners Inc",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 30",
+    "tax_id": "83-7038374",
+    "supplier_details": "Specializes in: Fasteners & Hardware",
+    "address": {
+      "address_title": "Global Fasteners Inc",
+      "address_line1": "9402 Peterson Drives",
+      "city": "Detroit",
+      "state": "MI",
+      "pincode": "48441",
+      "country": "United States",
+      "phone": "001-851-316-1559x40781",
+      "email_id": "sales@globalfasten.com"
+    },
+    "_meta": {
+      "categories": [
+        "Fasteners & Hardware"
+      ]
+    }
+  },
+  {
+    "supplier_name": "Precision Components Ltd",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 60",
+    "tax_id": "84-4918715",
+    "supplier_details": "Specializes in: Bearings & Seals, Hydraulic Components",
+    "address": {
+      "address_title": "Precision Components Ltd",
+      "address_line1": "310 Kendra Common Apt. 164",
+      "city": "Cleveland",
+      "state": "OH",
+      "pincode": "44858",
+      "country": "United States",
+      "phone": "+1-952-855-3419x2832",
+      "email_id": "sales@precisioncom.com"
+    },
+    "_meta": {
+      "categories": [
+        "Bearings & Seals",
+        "Hydraulic Components"
+      ]
+    }
+  },
+  {
+    "supplier_name": "Parker Hydraulics Direct",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 45",
+    "tax_id": "43-9344066",
+    "supplier_details": "Specializes in: Hydraulic Components",
+    "address": {
+      "address_title": "Parker Hydraulics Direct",
+      "address_line1": "503 Linda Locks",
+      "city": "Indianapolis",
+      "state": "IN",
+      "pincode": "46549",
+      "country": "United States",
+      "phone": "639-453-7672",
+      "email_id": "sales@parkerhydrau.com"
+    },
+    "_meta": {
+      "categories": [
+        "Hydraulic Components"
+      ]
+    }
+  },
+  {
+    "supplier_name": "Bosch Rexroth Supply",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 45",
+    "tax_id": "40-9418194",
+    "supplier_details": "Specializes in: Hydraulic Components, Electrical Components",
+    "address": {
+      "address_title": "Bosch Rexroth Supply",
+      "address_line1": "969 Cox Dam Suite 101",
+      "city": "Charlotte",
+      "state": "NC",
+      "pincode": "27319",
+      "country": "United States",
+      "phone": "+1-326-691-6697x8480",
+      "email_id": "sales@boschrexroth.com"
+    },
+    "_meta": {
+      "categories": [
+        "Hydraulic Components",
+        "Electrical Components"
+      ]
+    }
+  },
+  {
+    "supplier_name": "SKF Bearing Solutions",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 45",
+    "tax_id": "99-5707197",
+    "supplier_details": "Specializes in: Bearings & Seals",
+    "address": {
+      "address_title": "SKF Bearing Solutions",
+      "address_line1": "6270 Stanton Track",
+      "city": "Philadelphia",
+      "state": "PA",
+      "pincode": "16464",
+      "country": "United States",
+      "phone": "914.289.3252x88095",
+      "email_id": "sales@skfbearingso.com"
+    },
+    "_meta": {
+      "categories": [
+        "Bearings & Seals"
+      ]
+    }
+  },
+  {
+    "supplier_name": "Siemens Automation Parts",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 30",
+    "tax_id": "21-6089806",
+    "supplier_details": "Specializes in: Electrical Components",
+    "address": {
+      "address_title": "Siemens Automation Parts",
+      "address_line1": "03911 Cabrera Trace Apt. 278",
+      "city": "Atlanta",
+      "state": "GA",
+      "pincode": "30339",
+      "country": "United States",
+      "phone": "989-363-8346x578",
+      "email_id": "sales@siemensautom.com"
+    },
+    "_meta": {
+      "categories": [
+        "Electrical Components"
+      ]
+    }
+  },
+  {
+    "supplier_name": "SafetyFirst Equipment Co",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "1/15 Net 45",
+    "tax_id": "40-3769795",
+    "supplier_details": "Specializes in: Safety Equipment",
+    "address": {
+      "address_title": "SafetyFirst Equipment Co",
+      "address_line1": "0983 Adrian Station",
+      "city": "Houston",
+      "state": "TX",
+      "pincode": "75985",
+      "country": "United States",
+      "phone": "510.451.8347",
+      "email_id": "sales@safetyfirste.com"
+    },
+    "_meta": {
+      "categories": [
+        "Safety Equipment"
+      ]
+    }
+  },
+  {
+    "supplier_name": "ChemLube Industries",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 30",
+    "tax_id": "87-9667227",
+    "supplier_details": "Specializes in: Lubricants & Chemicals",
+    "address": {
+      "address_title": "ChemLube Industries",
+      "address_line1": "76311 Gomez Loop Suite 010",
+      "city": "Baton Rouge",
+      "state": "LA",
+      "pincode": "70825",
+      "country": "United States",
+      "phone": "001-551-333-3872x6247",
+      "email_id": "sales@chemlubeindu.com"
+    },
+    "_meta": {
+      "categories": [
+        "Lubricants & Chemicals"
+      ]
+    }
+  },
+  {
+    "supplier_name": "ConveyorTech Systems",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "1/15 Net 45",
+    "tax_id": "66-9232926",
+    "supplier_details": "Specializes in: Conveyor Parts",
+    "address": {
+      "address_title": "ConveyorTech Systems",
+      "address_line1": "80132 Tucker Forest",
+      "city": "Pittsburgh",
+      "state": "PA",
+      "pincode": "18286",
+      "country": "United States",
+      "phone": "9264064746",
+      "email_id": "sales@conveyortech.com"
+    },
+    "_meta": {
+      "categories": [
+        "Conveyor Parts"
+      ]
+    }
+  },
+  {
+    "supplier_name": "OfficeMax Business",
+    "supplier_group": "Local",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "2/10 Net 30",
+    "tax_id": "33-4977931",
+    "supplier_details": "Specializes in: Office Supplies",
+    "address": {
+      "address_title": "OfficeMax Business",
+      "address_line1": "98050 Breanna Parkway",
+      "city": "Columbus",
+      "state": "OH",
+      "pincode": "45176",
+      "country": "United States",
+      "phone": "(808)312-1913",
+      "email_id": "sales@officemaxbus.com"
+    },
+    "_meta": {
+      "categories": [
+        "Office Supplies"
+      ]
+    }
+  },
+  {
+    "supplier_name": "PackRight Solutions",
+    "supplier_group": "Local",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 30",
+    "tax_id": "86-4130808",
+    "supplier_details": "Specializes in: Packaging Materials",
+    "address": {
+      "address_title": "PackRight Solutions",
+      "address_line1": "169 Donovan Ford",
+      "city": "Memphis",
+      "state": "TN",
+      "pincode": "38381",
+      "country": "United States",
+      "phone": "001-353-346-2475x107",
+      "email_id": "sales@packrightsol.com"
+    },
+    "_meta": {
+      "categories": [
+        "Packaging Materials"
+      ]
+    }
+  },
+  {
+    "supplier_name": "MRO Warehouse Direct",
+    "supplier_group": "Distributor",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 30",
+    "tax_id": "82-3576135",
+    "supplier_details": "Specializes in: MRO Supplies, Safety Equipment",
+    "address": {
+      "address_title": "MRO Warehouse Direct",
+      "address_line1": "51354 Samuel Plains Suite 980",
+      "city": "Dallas",
+      "state": "TX",
+      "pincode": "77955",
+      "country": "United States",
+      "phone": "+1-612-941-1824x49353",
+      "email_id": "sales@mrowarehouse.com"
+    },
+    "_meta": {
+      "categories": [
+        "MRO Supplies",
+        "Safety Equipment"
+      ]
+    }
+  },
+  {
+    "supplier_name": "AllParts Industrial",
+    "supplier_group": "Distributor",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 30",
+    "tax_id": "41-0852264",
+    "supplier_details": "Specializes in: MRO Supplies, Fasteners & Hardware, Bearings & Seals",
+    "address": {
+      "address_title": "AllParts Industrial",
+      "address_line1": "640 Matthew Curve",
+      "city": "Minneapolis",
+      "state": "MN",
+      "pincode": "56305",
+      "country": "United States",
+      "phone": "727-486-8011x280",
+      "email_id": "sales@allpartsindu.com"
+    },
+    "_meta": {
+      "categories": [
+        "MRO Supplies",
+        "Fasteners & Hardware",
+        "Bearings & Seals"
+      ]
+    }
+  },
+  {
+    "supplier_name": "United Supply Chain Co",
+    "supplier_group": "Distributor",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 45",
+    "tax_id": "65-2138181",
+    "supplier_details": "Specializes in: Raw Materials, MRO Supplies, Packaging Materials",
+    "address": {
+      "address_title": "United Supply Chain Co",
+      "address_line1": "5053 Elizabeth Knoll",
+      "city": "Denver",
+      "state": "CO",
+      "pincode": "81598",
+      "country": "United States",
+      "phone": "+1-469-723-2260",
+      "email_id": "sales@unitedsupply.com"
+    },
+    "_meta": {
+      "categories": [
+        "Raw Materials",
+        "MRO Supplies",
+        "Packaging Materials"
+      ]
+    }
+  },
+  {
+    "supplier_name": "Global Parts Co",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "China",
+    "default_currency": "USD",
+    "payment_terms": "2/10 Net 30"
+  },
+  {
+    "supplier_name": "Pacific Manufacturing",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "Japan",
+    "default_currency": "USD",
+    "payment_terms": "Net 45"
+  },
+  {
+    "supplier_name": "Midwest Fasteners Inc",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "2/10 Net 30"
+  },
+  {
+    "supplier_name": "EuroTech Automation",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "Germany",
+    "default_currency": "USD",
+    "payment_terms": "Net 45"
+  },
+  {
+    "supplier_name": "SafetyFirst Equipment",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "1/15 Net 45"
+  },
+  {
+    "supplier_name": "Blocked Vendor Inc",
+    "supplier_group": "Services",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "disabled": 1
+  },
+  {
+    "supplier_name": "NewTech Solutions",
+    "supplier_group": "Raw Material",
+    "supplier_type": "Company",
+    "country": "United States",
+    "default_currency": "USD",
+    "payment_terms": "Net 30"
+  }
+]

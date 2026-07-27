@@ -1,0 +1,102 @@
+[
+  {
+    "_persona": "maria",
+    "_scenario": "LOW risk, small amount, prices match historical — should auto-approve",
+    "material_request_type": "Purchase",
+    "transaction_date": "2026-04-12",
+    "schedule_date": "2026-04-26",
+    "purpose": "Monthly restock of safety PPE for production floor — OSHA compliance",
+    "items": [
+      {"item_code": "MAT-SF-001", "item_name": "Safety Goggles SG-Pro Anti-Fog", "qty": 20, "rate": 11.50, "uom": "Nos", "schedule_date": "2026-04-26", "warehouse": "Stores - AMG"},
+      {"item_code": "MAT-SF-002", "item_name": "Nitrile Gloves Box/100 Large", "qty": 10, "rate": 14.00, "uom": "Nos", "schedule_date": "2026-04-26", "warehouse": "Stores - AMG"}
+    ],
+    "department": "Manufacturing - AMG",
+    "cost_center": "Manufacturing - AMG",
+    "_department_hint": "Manufacturing - AMG",
+    "_cost_center_hint": "Manufacturing - AMG"
+  },
+  {
+    "_persona": "maria",
+    "_scenario": "MEDIUM risk, $4K+ amount, prices near historical — should pause for approval",
+    "material_request_type": "Purchase",
+    "transaction_date": "2026-04-12",
+    "schedule_date": "2026-04-30",
+    "purpose": "CNC machine scheduled maintenance Q2 — bearing assemblies and cutting fluid",
+    "items": [
+      {"item_code": "MAT-CP-001", "item_name": "Bearing Assembly SKU-7890", "qty": 40, "rate": 65.00, "uom": "Nos", "schedule_date": "2026-04-30", "warehouse": "Stores - AMG"},
+      {"item_code": "MAT-CN-002", "item_name": "Cutting Fluid Concentrate 20L", "qty": 15, "rate": 92.00, "uom": "Nos", "schedule_date": "2026-04-30", "warehouse": "Stores - AMG"},
+      {"item_code": "BRG-6205-2RS", "item_name": "Deep Groove Ball Bearing 6205-2RS", "qty": 50, "rate": 16.63, "uom": "Nos", "schedule_date": "2026-04-30", "warehouse": "Stores - AMG"}
+    ],
+    "department": "Manufacturing - AMG",
+    "cost_center": "Manufacturing - AMG",
+    "_department_hint": "Manufacturing - AMG",
+    "_cost_center_hint": "Manufacturing - AMG"
+  },
+  {
+    "_persona": "lisa",
+    "_scenario": "Routine restock — no historical PO for welding items, clean catalog pricing",
+    "material_request_type": "Purchase",
+    "transaction_date": "2026-04-12",
+    "schedule_date": "2026-04-28",
+    "purpose": "Welding shop consumables restock for Q2 production run",
+    "items": [
+      {"item_code": "WELD-ROD-E7018", "item_name": "Welding Rod E7018 3.2mm 5kg", "qty": 25, "rate": 53.50, "uom": "Box", "schedule_date": "2026-04-28", "warehouse": "Stores - AMG"},
+      {"item_code": "MAT-RM-003", "item_name": "Welding Wire ER70S-6 1.2mm", "qty": 80, "rate": 9.60, "uom": "Kg", "schedule_date": "2026-04-28", "warehouse": "Stores - AMG"},
+      {"item_code": "ABRASIVE-DISC", "item_name": "Grinding Disc 125mm Aluminium Oxide", "qty": 100, "rate": 4.75, "uom": "Nos", "schedule_date": "2026-04-28", "warehouse": "Stores - AMG"}
+    ],
+    "department": "Maintenance - AMG",
+    "cost_center": "Maintenance - AMG",
+    "_department_hint": "Maintenance - AMG",
+    "_cost_center_hint": "Maintenance - AMG"
+  },
+  {
+    "_persona": "carlos",
+    "_scenario": "Engineering project — sensors, matches historical PO prices from EuroTech",
+    "material_request_type": "Purchase",
+    "transaction_date": "2026-04-12",
+    "schedule_date": "2026-05-05",
+    "purpose": "Conveyor line 4 upgrade project — phase 2 automation sensors",
+    "items": [
+      {"item_code": "MAT-CP-005", "item_name": "Proximity Sensor Inductive 10mm", "qty": 20, "rate": 55.00, "uom": "Nos", "schedule_date": "2026-05-05", "warehouse": "Stores - AMG"},
+      {"item_code": "MAT-CP-003", "item_name": "PLC Controller Unit", "qty": 4, "rate": 315.00, "uom": "Nos", "schedule_date": "2026-05-05", "warehouse": "Stores - AMG"},
+      {"item_code": "SOCKET-CAP-M8", "item_name": "Socket Cap Screw M8x30", "qty": 200, "rate": 0.58, "uom": "Nos", "schedule_date": "2026-05-05", "warehouse": "Stores - AMG"}
+    ],
+    "department": "Engineering - AMG",
+    "cost_center": "Engineering - AMG",
+    "_department_hint": "Engineering - AMG",
+    "_cost_center_hint": "Engineering - AMG"
+  },
+  {
+    "_persona": "aisha",
+    "_scenario": "Safety — small order, prices match SafetyFirst PO, should auto-approve",
+    "material_request_type": "Purchase",
+    "transaction_date": "2026-04-12",
+    "schedule_date": "2026-04-22",
+    "purpose": "Annual safety audit preparation — replacement PPE and signage",
+    "items": [
+      {"item_code": "MAT-SF-001", "item_name": "Safety Goggles SG-Pro Anti-Fog", "qty": 30, "rate": 11.50, "uom": "Nos", "schedule_date": "2026-04-22", "warehouse": "Stores - AMG"},
+      {"item_code": "MAT-CN-003", "item_name": "Degreaser Spray 500ml", "qty": 40, "rate": 10.50, "uom": "Nos", "schedule_date": "2026-04-22", "warehouse": "Stores - AMG"}
+    ],
+    "department": "Safety - AMG",
+    "cost_center": "Safety - AMG",
+    "_department_hint": "Safety - AMG",
+    "_cost_center_hint": "Safety - AMG"
+  },
+  {
+    "_persona": "rachel",
+    "_scenario": "HIGH risk — Steel Rod price inflated 140% vs historical, triggers escalation",
+    "material_request_type": "Purchase",
+    "transaction_date": "2026-04-12",
+    "schedule_date": "2026-05-01",
+    "purpose": "Q2 raw materials forecast — stainless steel fasteners and seals",
+    "items": [
+      {"item_code": "MAT-RM-001", "item_name": "Stainless Steel Sheet 304 2mm", "qty": 50, "rate": 125.00, "uom": "Sheet", "schedule_date": "2026-05-01", "warehouse": "Stores - AMG"},
+      {"item_code": "MAT-RM-002", "item_name": "Stainless Steel Bolt M10x40", "qty": 500, "rate": 2.25, "uom": "Nos", "schedule_date": "2026-05-01", "warehouse": "Stores - AMG"},
+      {"item_code": "SEAL-TC-50", "item_name": "TC Oil Seal 50x72x10 NBR", "qty": 100, "rate": 4.70, "uom": "Nos", "schedule_date": "2026-05-01", "warehouse": "Stores - AMG"}
+    ],
+    "department": "Operations - AMG",
+    "cost_center": "Operations - AMG",
+    "_department_hint": "Operations - AMG",
+    "_cost_center_hint": "Operations - AMG"
+  }
+]

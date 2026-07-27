@@ -1,0 +1,26 @@
+{
+  "name": "p2p-infra",
+  "version": "1.0.0",
+  "description": "CDK stacks for P2P Agentic Platform — ERPNext, AgentCore, and frontend",
+  "bin": {
+    "p2p-infra": "bin/app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
+    "synth": "cdk synth"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-bedrock-agentcore-alpha": "^2.248.0-alpha.0",
+    "aws-cdk-lib": "^2.170.0",
+    "constructs": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "aws-cdk": "^2.170.0",
+    "typescript": "~5.7.0"
+  }
+}

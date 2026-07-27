@@ -1,0 +1,8 @@
+node_modules/
+dist/
+cdk.out/
+*.js
+!bin/app.ts
+*.d.ts
+.env
+cdk.context.json

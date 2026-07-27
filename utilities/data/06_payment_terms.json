@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Net 15",
+    "terms": [{"credit_days": 15, "invoice_portion": 100}]
+  },
+  {
+    "name": "Net 30",
+    "terms": [{"credit_days": 30, "invoice_portion": 100}]
+  },
+  {
+    "name": "Net 45",
+    "terms": [{"credit_days": 45, "invoice_portion": 100}]
+  },
+  {
+    "name": "Net 60",
+    "terms": [{"credit_days": 60, "invoice_portion": 100}]
+  },
+  {
+    "name": "1/15 Net 45",
+    "_description": "1% discount if paid within 15 days, otherwise net 45",
+    "terms": [
+      {
+        "credit_days": 45,
+        "invoice_portion": 100,
+        "discount_percentage": 1.0,
+        "discount_validity": 15,
+        "discount_validity_based_on": "Day(s) after invoice date"
+      }
+    ]
+  },
+  {
+    "name": "2/10 Net 30",
+    "_description": "2% discount if paid within 10 days, otherwise net 30. Agent should flag this savings opportunity.",
+    "terms": [
+      {
+        "credit_days": 30,
+        "invoice_portion": 100,
+        "discount_percentage": 2.0,
+        "discount_validity": 10,
+        "discount_validity_based_on": "Day(s) after invoice date"
+      }
+    ]
+  }
+]

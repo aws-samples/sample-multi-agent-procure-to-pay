@@ -1,0 +1,25 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# gitleaks configuration. Extends the upstream default ruleset and adds an
+# allowlist for documented, non-secret placeholders in this sample repo.
+title = "aria-p2p-agent gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholders and example values that are not real secrets"
+
+# Example env files ship intentional placeholder values (XXXX / xxxx / empty).
+paths = [
+  '''.*\.env\.example$''',
+  '''infra/docker/env-erpnext$''',
+]
+
+# Placeholder credential patterns used in docs and env examples.
+regexes = [
+  '''us-east-1_X{6,}''',                 # VITE_COGNITO_POOL_ID=us-east-1_XXXXXXXXX
+  '''x{16,}''',                          # VITE_COGNITO_CLIENT_ID=xxxx... placeholder
+  '''<[Cc]ognito [^>]+>''',              # <Cognito Client ID> angle-bracket placeholders
+]
