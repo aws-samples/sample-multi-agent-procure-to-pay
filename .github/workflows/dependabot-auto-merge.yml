@@ -1,0 +1,52 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Auto-merge Dependabot pull requests for patch and minor version bumps once the
+# CI gate (.github/workflows/ci.yml) passes. Major-version bumps are left for
+# manual review. Merge is enabled via GitHub's auto-merge, so the PR only merges
+# after required status checks succeed — this workflow never bypasses CI.
+#
+# Requirements on the repo (Settings):
+#   - "Allow auto-merge" enabled (Settings -> General -> Pull Requests).
+#   - Branch protection on main with the CI checks marked as required, so a PR
+#     cannot merge until CI is green.
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+    # pull_request_target would run with write perms even from the Dependabot
+    # fork context; we use pull_request + an explicit permissions block instead.
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    # Only act on PRs opened by Dependabot.
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a  # v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for patch and minor updates
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on major updates (manual review)
+        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+        run: |
+          gh pr comment "$PR_URL" --body \
+            "This is a **major** version bump (\`${{ steps.meta.outputs.dependency-names }}\`), so it is not auto-merged. Please review and merge manually."
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,57 @@
+### Python
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+### Environment / secrets
+.env
+.env.*
+!.env.example
+frontend/.env.local
+frontend/.env.production
+
+### CDK
+infra/cdk.out/
+infra/dist/
+infra/cdk.context.json
+
+### Build artifacts
+.build/
+**/lambda.zip
+frontend/build/
+frontend/dist/
+node_modules/
+.agentcore-runtimes.json
+
+### Seed output
+backend/seed/output/
+
+### AgentCore CLI scaffold artifacts (regenerated locally)
+backend/.bedrock_agentcore/
+
+### Kiro scratch (local dev scripts, experiments)
+.kiro/scratch/
+
+### OS / IDE
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.kiro/
+.cline/
+.claude/
+.agents/
+presentation-deck.md
+
+### Security scan exports
+ProbeScanExport-*.csv
+
+### Local harness (injected into frontend at runtime)
+frontend/public/local-config.js
+
+### Playwright MCP session artifacts
+.playwright-mcp/

@@ -1,0 +1,401 @@
+{
+  "agentChat": {
+    "ui": {
+      "noPreviousChats": "No previous chats",
+      "recentChats": "Recent Chats",
+      "thinking": "Thinking..."
+    }
+  },
+  "agentFindings": {
+    "ui": {
+      "areasOfConcern": "Areas of Concern ({{count}})"
+    }
+  },
+  "agentProgress": {
+    "ui": {
+      "processing": "Processing..."
+    }
+  },
+  "app": {
+    "ui": {
+      "allAgentsOnline": "All Agents Online",
+      "loading": "Loading...",
+      "noAccess": "You don't have access to this page.",
+      "operations": "Operations",
+      "pipeline": "Pipeline",
+      "signOut": "Sign Out",
+      "skipToContent": "Skip to content"
+    }
+  },
+  "architecture": {
+    "ui": {
+      "subtitle": "ARIA platform architecture — Amazon Bedrock AgentCore, MCP Gateway, ERPNext",
+      "title": "System Architecture"
+    }
+  },
+  "commandCenter": {
+    "ui": {
+      "action": "Action",
+      "agentActivityLog": "Agent Activity Log",
+      "agentFleetStatus": "Agent Fleet Status",
+      "aria": "ARIA",
+      "confidence": "Confidence",
+      "decidedBy": "Decided By",
+      "document": "Document",
+      "legacyProcess": "Legacy Process",
+      "legacyVsAgenticImpact": "Legacy vs Agentic -- Impact",
+      "noActivityRecorded": "No agent activity recorded yet.",
+      "noActivityYet": "No activity yet",
+      "recentTransactions": "Recent Transactions ({{count}})",
+      "subtitle": "Real-time view of agent operations across the procurement pipeline",
+      "time": "Time",
+      "title": "Command Center",
+      "totalDecisions": "({{count}} total decisions)",
+      "type": "Type"
+    }
+  },
+  "configuration": {
+    "ui": {
+      "agreement": "Agreement",
+      "approvalDelegations": "Approval Delegations",
+      "cancel": "Cancel",
+      "couldNotLoad": "Could not load configuration",
+      "createApprovalDelegation": "Create Approval Delegation",
+      "createDelegation": "Create Delegation",
+      "decisionOutcomes": "Decision Outcomes",
+      "delegateTo": "Delegate To",
+      "discount": "Discount",
+      "end": "End",
+      "endDate": "End Date",
+      "frameworkAgreements": "Framework Agreements",
+      "from": "From",
+      "invoiceMatchingTolerances": "Invoice Matching Tolerances",
+      "materialGroup": "Material Group",
+      "minScoreTieBreak": "Min score: {{minScore}}/100 | Tie-break: {{tieBreak}}",
+      "noDelegations": "No delegations configured. Create one to auto-route approvals when you're unavailable.",
+      "notesOptional": "Notes (optional)",
+      "notesPlaceholder": "e.g., Vacation coverage",
+      "objective": "Objective",
+      "requisitionThresholds": "Requisition Thresholds",
+      "selectPerson": "Select a person...",
+      "sourcingScoringWeights": "Sourcing Scoring Weights",
+      "spendLimit": "Spend Limit",
+      "spendLimitDollars": "Spend Limit ($)",
+      "start": "Start",
+      "startDate": "Start Date",
+      "status": "Status",
+      "subtitle": "Approval rules, contracts, delegations, and agent prompts",
+      "tabAgents": "Agents",
+      "tabContracts": "Contracts",
+      "tabDelegations": "Delegations",
+      "tabRules": "Rules",
+      "title": "Configuration",
+      "to": "To",
+      "utilization": "Utilization",
+      "value": "Value",
+      "vendor": "Vendor",
+      "viewSystemPrompt": "View System Prompt"
+    }
+  },
+  "dashboard": {
+    "ui": {
+      "actionNeeded": "Action needed",
+      "allClear": "All clear",
+      "budgetUtilizationByCostCenter": "Budget Utilization by Cost Center",
+      "invoices": "Invoices",
+      "invoicesSummary": "Invoices Summary",
+      "loading": "Loading dashboard...",
+      "noBudgetData": "No budget data available",
+      "noSupplierData": "No supplier data",
+      "noneOverdue": "None overdue",
+      "ofTotal": "of {{count}} total",
+      "openOrders": "Open Orders",
+      "orderInvoiceStatus": "Order & Invoice Status",
+      "ordersSummary": "Orders Summary",
+      "overdueInvoices": "Overdue Invoices",
+      "pipelineFlow": "Pipeline Flow",
+      "purchaseOrders": "Purchase Orders",
+      "spendOverview": "Spend Overview",
+      "subtitle": "Procure-to-Pay pipeline overview",
+      "suppliers": "Suppliers",
+      "title": "Dashboard",
+      "topSuppliersBySpend": "Top Suppliers by Spend",
+      "totalSpend": "Total Spend",
+      "unpaidInvoices": "Unpaid Invoices",
+      "view": "View"
+    }
+  },
+  "decisions": {
+    "ui": {
+      "action": "Action",
+      "by": "By",
+      "confidence": "Confidence",
+      "document": "Document",
+      "justification": "Justification",
+      "noAdditionalDetails": "No additional details recorded.",
+      "noRunsRecorded": "No runs recorded yet.",
+      "pendingApproval": "PENDING APPROVAL",
+      "recommendation": "Recommendation",
+      "running": "RUNNING",
+      "status": "Status",
+      "subtitle": "Audit trail of agent workflows, analyses, and human decisions",
+      "summary": "Summary",
+      "time": "Time",
+      "title": "Runs & Decisions",
+      "type": "Type"
+    }
+  },
+  "entryPortal": {
+    "ui": {
+      "footerTagline": "ARIA — Powered by AWS Bedrock AgentCore + 7 AI Agents",
+      "loadingWorkspace": "Loading your workspace...",
+      "noRecentItems": "No recent items",
+      "quickActions": "Quick Actions",
+      "recentInvoices": "Recent Invoices",
+      "recentRequisitions": "Recent Requisitions",
+      "role": "Role: {{role}}",
+      "viewAll": "View all",
+      "welcomeBack": "Welcome back, {{name}}",
+      "yourRecentRequests": "Your Recent Requests"
+    }
+  },
+  "errors": {
+    "ui": {
+      "bySeverity": "By Severity",
+      "colAgent": "Agent",
+      "colCategory": "Category",
+      "colDocument": "Document",
+      "colMessage": "Message",
+      "colRetryable": "Retryable",
+      "colSeverity": "Severity",
+      "colTime": "Time",
+      "errorLog": "Error Log ({{count}})",
+      "humanActionNeeded": "Human Action Needed",
+      "noErrors": "No errors -- agents are running clean",
+      "subtitle": "Agent failures and exceptions",
+      "title": "Agent Errors",
+      "unresolvedErrors": "Unresolved Errors"
+    }
+  },
+  "goodsReceipts": {
+    "ui": {
+      "amount": "Amount",
+      "date": "Date",
+      "description": "Description",
+      "dialogTitle": "Receiving Agent -- GR Verification",
+      "document": "Document",
+      "item": "Item",
+      "itemLabel": "Item {{itemId}} -- {{itemName}}",
+      "items": "Items",
+      "lineValidations": "Line Validations",
+      "noReceiptsFound": "No goods receipts found",
+      "qtyReceived": "Qty Received",
+      "reasoning": "Reasoning",
+      "receiptLineItems": "Receipt Line Items",
+      "rejectedQty": "Rejected Qty",
+      "status": "Status",
+      "subtitle": "Verify goods receipts against purchase orders ({{totalReceipts}} receipts across {{poCount}} POs)",
+      "supplier": "Supplier",
+      "title": "Goods Receipts",
+      "validationResult": "Validation Result",
+      "verifyWithAgent": "Verify with Agent"
+    }
+  },
+  "invoices": {
+    "ui": {
+      "allTab": "All ({{count}})",
+      "amount": "Amount",
+      "amountLabel": "Amount:",
+      "analyzePayment": "Analyze Payment",
+      "analyzingInvoiceWithBedrock": "Analyzing invoice with Amazon Bedrock...",
+      "analyzingPaymentSchedule": "Analyzing payment schedule...",
+      "analyzingPaymentTerms": "Analyzing payment terms and discount opportunities...",
+      "annualizedDiscountRate": "Annualized Discount Rate",
+      "autoApprovedThreeWayMatch": "Auto-Approved -- 3-Way Match",
+      "blockPayment": "Block Payment",
+      "close": "Close",
+      "comparingInvoice": "Comparing invoice against PO and goods receipt...",
+      "confidence": "Confidence",
+      "confidenceLabel": "Confidence:",
+      "confirmSchedule": "Confirm & Schedule",
+      "description": "Description",
+      "discount": "Discount",
+      "discountAmount": "Discount Amount",
+      "discountAvailable": "Discount Available",
+      "discountAvailableYes": "Yes -- {{percent}}%",
+      "discrepancies": "Discrepancies",
+      "document": "Document",
+      "dueDate": "Due Date",
+      "flags": "Flags",
+      "goodsReceipt": "Goods Receipt",
+      "grQty": "GR Qty",
+      "invoice": "Invoice",
+      "invoiceAmount": "Invoice Amount",
+      "invoiceCreatedInErp": "Invoice created in ERP",
+      "invoiceDate": "Invoice Date",
+      "invoiceExtraction": "Invoice Extraction (Amazon Bedrock)",
+      "invoiceMatchingAgent": "Invoice Matching Agent",
+      "invoiceQty": "Invoice Qty",
+      "item": "Item",
+      "itemCode": "Item Code",
+      "lineItems": "Line Items ({{count}})",
+      "lineMatches": "Line Matches",
+      "matchReasoning": "Match Reasoning",
+      "matchResult": "Match Result",
+      "netAmount": "Net Amount",
+      "netPayment": "Net Payment",
+      "no": "No",
+      "noInvoicesFound": "No invoices found",
+      "noReceiptFound": "No receipt found",
+      "outstanding": "Outstanding",
+      "paidTab": "Paid ({{count}})",
+      "partlyPaidTab": "Partly Paid ({{count}})",
+      "payBy": "Pay By",
+      "paymentAgent": "Payment Agent",
+      "paymentAgentSchedulingAnalysis": "Payment Agent -- Scheduling Analysis",
+      "paymentAnalysis": "Payment Analysis",
+      "paymentDetails": "Payment Details",
+      "paymentRecommendation": "Payment Recommendation",
+      "paymentScheduledSuccessfully": "Payment scheduled successfully",
+      "poQty": "PO Qty",
+      "purchaseOrder": "Purchase Order",
+      "qty": "Qty",
+      "reasoning": "Reasoning",
+      "recommendation": "Recommendation",
+      "recommendedPayDate": "Recommended Pay Date",
+      "reviewQueueTab": "Review Queue ({{count}})",
+      "savingWithDiscount": "(saving {{amount}} with {{percent}}% discount)",
+      "schedulePayment": "Schedule Payment",
+      "schedulePaymentWorkflow": "Schedule Payment Workflow",
+      "searchPlaceholder": "Search by invoice, supplier, PO, or reference",
+      "selectFromListAndMatch": "Select it from the list and run 3-Way Match to validate.",
+      "status": "Status",
+      "subtitle": "Three-way match, payment analysis, and payment scheduling",
+      "supplier": "Supplier",
+      "threeWayMatch": "3-Way Match",
+      "threeWayMatchLabel": "Three-Way Match",
+      "title": "Invoices & Payments",
+      "unitPrice": "Unit Price",
+      "uploadInvoice": "Upload Invoice",
+      "yes": "Yes"
+    }
+  },
+  "login": {
+    "ui": {
+      "demoPrompt": "Sign in as a demo persona to explore the platform",
+      "securedByCognito": "Secured by Amazon Cognito",
+      "signIn": "Sign in",
+      "signInWithCredentials": "Sign in with credentials",
+      "subtitle": "Agentic Requisition-to-Payment Intelligent Automation"
+    }
+  },
+  "notificationBell": {
+    "ui": {
+      "noRecentActivity": "No recent activity",
+      "title": "Notifications"
+    }
+  },
+  "payments": {
+    "ui": {
+      "agentTitle": "Payment Agent -- Scheduling Analysis",
+      "analyzePayment": "Analyze Payment",
+      "annualizedDiscountRate": "Annualized Discount Rate",
+      "colDueDate": "Due Date",
+      "colInvoice": "Invoice",
+      "colPaymentTerms": "Payment Terms",
+      "colStatus": "Status",
+      "colSupplier": "Supplier",
+      "colTotalAmount": "Total Amount",
+      "discountAmount": "Discount Amount",
+      "discountAvailable": "Discount Available",
+      "dueDate": "Due Date",
+      "flags": "Flags",
+      "invoiceAmount": "Invoice Amount",
+      "netPayment": "Net Payment",
+      "noInvoices": "No invoices ready for payment",
+      "paymentDetails": "Payment Details",
+      "paymentRecommendation": "Payment Recommendation",
+      "reasoning": "Reasoning",
+      "recommendedPayDate": "Recommended Pay Date",
+      "searchPlaceholder": "Search by invoice, supplier, or PO",
+      "subtitle": "Optimize payment timing and capture early payment discounts ({{total}})",
+      "title": "Payment Scheduling"
+    }
+  },
+  "purchaseOrders": {
+    "ui": {
+      "colAmount": "Amount",
+      "colItemId": "Item ID",
+      "colItemName": "Item Name",
+      "colLine": "Line",
+      "colOrderDate": "Order Date",
+      "colPaymentTerms": "Payment Terms",
+      "colPoNumber": "PO Number",
+      "colQty": "Qty",
+      "colStatus": "Status",
+      "colSupplier": "Supplier",
+      "colTotalAmount": "Total Amount",
+      "colUnitPrice": "Unit Price",
+      "deliveryDate": "Delivery Date",
+      "lineItems": "Line Items ({{total}})",
+      "noPurchaseOrders": "No purchase orders",
+      "poLabel": "PO",
+      "searchPlaceholder": "Search by PO, supplier, or status",
+      "subtitle": "Purchase orders across the P2P pipeline ({{total}})",
+      "title": "Purchase Orders"
+    }
+  },
+  "sourcing": {
+    "ui": {
+      "agentTitle": "Sourcing Agent -- Vendor Evaluation",
+      "colCapacity": "Capacity",
+      "colDelivery": "Delivery",
+      "colLineItems": "Line Items",
+      "colMaterials": "Materials",
+      "colNotes": "Notes",
+      "colPrice": "Price",
+      "colQuality": "Quality",
+      "colRequester": "Requester",
+      "colRequisitionId": "Requisition ID",
+      "colScore": "Score",
+      "colStatus": "Status",
+      "colTotalAmount": "Total Amount",
+      "consolidationOpportunity": "Consolidation Opportunity",
+      "evaluateVendors": "Evaluate Vendors",
+      "noRequisitions": "No requisitions available for sourcing",
+      "overallScore": "Overall Score",
+      "reasoning": "Reasoning",
+      "recommendedSupplier": "Recommended Supplier",
+      "searchPlaceholder": "Search by requisition ID, requester, or status",
+      "subtitle": "Evaluate and select optimal suppliers for approved requisitions",
+      "supplier": "Supplier",
+      "supplierComparison": "Supplier Comparison",
+      "supplierId": "Supplier ID",
+      "title": "Vendor Sourcing"
+    }
+  },
+  "tableViewer": {
+    "ui": {
+      "adapterInfoPrefix": "ERP data is now accessed through the canonical adapter API at",
+      "adapterInfoSuffix": "Use the Requisitions, Purchase Orders, Invoices, and other pages to browse procurement data.",
+      "title": "Data Browser"
+    }
+  },
+  "threeWayMatch": {
+    "ui": {
+      "grQty": "GR Qty",
+      "invoicePrice": "Invoice Price",
+      "invoiceQty": "Invoice Qty",
+      "lineItemComparison": "Line Item Comparison",
+      "lineStatus": "Line Status",
+      "material": "Material",
+      "poPrice": "PO Price",
+      "poQty": "PO Qty"
+    }
+  },
+  "ui": {
+    "ui": {
+      "close": "Close"
+    }
+  }
+}
