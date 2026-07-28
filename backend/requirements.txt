@@ -13,4 +13,4 @@ bedrock-agentcore>=1.4.0
 pyyaml>=6.0
 hypothesis>=6.100.0
 moto>=5.0.0
-requests>=2.31.0
+requests>=2.34.2
