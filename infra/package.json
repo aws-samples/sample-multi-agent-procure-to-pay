@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@aws-cdk/aws-bedrock-agentcore-alpha": "^2.248.0-alpha.0",
-    "aws-cdk-lib": "^2.170.0",
+    "aws-cdk-lib": "^2.262.1",
     "constructs": "^10.0.0"
   },
   "devDependencies": {
