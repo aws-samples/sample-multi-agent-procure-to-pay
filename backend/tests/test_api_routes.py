@@ -345,7 +345,7 @@ class TestAdminRoutes:
         assert len(resp.json()) == 0
 
     def test_admin_status_no_adapter(self, app_client):
-        """Without ADAPTER_API_URL, status returns error."""
+        """With no ERP transport configured, status returns error."""
         resp = app_client.get("/api/admin/status")
         assert resp.status_code == 200
         body = resp.json()

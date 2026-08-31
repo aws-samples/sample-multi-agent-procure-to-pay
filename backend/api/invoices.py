@@ -8,7 +8,8 @@ Async pipeline:
 3. Frontend polls GET /jobs/{job_id} for status updates
 
 The API Lambda (no VPC) can't reach ERPNext directly. All ERP operations
-go through the Adapter Lambda (VPC) via ADAPTER_API_URL (HTTP through API Gateway).
+go through the Adapter Lambda (VPC) via services.erp_client, which invokes it
+directly rather than over a public HTTP route.
 """
 
 import json
@@ -19,17 +20,18 @@ import uuid
 import threading
 
 import boto3
-import requests
-from fastapi import APIRouter, UploadFile, File, HTTPException, Header, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Optional
+
+from services import erp_client
+from services.auth import get_user_email
 
 logger = logging.getLogger("p2p.api.invoices")
 
 router = APIRouter()
 
 INVOICE_JOBS_TABLE = os.environ.get("INVOICE_JOBS_TABLE", "p2p-dev-invoice-jobs")
-ADAPTER_API_URL = os.environ.get("ADAPTER_API_URL", "")
 
 _ddb = None
 
@@ -82,8 +84,8 @@ async def upload_invoice(file: UploadFile = File(...)):
 
 @router.post("/analyzeAndCreateInvoice")
 async def analyze_and_create_invoice(
+    request: Request,
     file: UploadFile = File(...),
-    x_p2p_user_email: Optional[str] = Header(None),
 ):
     """Upload a vendor invoice PDF → start async job to extract and create in ERP.
 
@@ -91,6 +93,11 @@ async def analyze_and_create_invoice(
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
+
+    # The job runs as this user against ERPNext, so identity must come from the
+    # verified JWT claims — a client-supplied header would let any caller pick
+    # whose ERP credentials the background job uses.
+    user_email = get_user_email(request)
 
     file_bytes = await file.read()
     if len(file_bytes) > 10 * 1024 * 1024:
@@ -113,7 +120,7 @@ async def analyze_and_create_invoice(
     # Run the pipeline in a background thread
     def _run_pipeline():
         try:
-            _process_invoice_job(job_id, file_bytes, x_p2p_user_email)
+            _process_invoice_job(job_id, file_bytes, user_email)
         except Exception as e:
             logger.error("Invoice job %s failed: %s", job_id, e, exc_info=True)
             _update_job(job_id, {"status": "failed", "error": str(e)})
@@ -151,13 +158,14 @@ def get_job_status(job_id: str):
 
 
 def _process_invoice_job(job_id: str, file_bytes: bytes, user_email: Optional[str]):
-    """Background pipeline: Bedrock extraction → HTTP adapter calls → create invoice.
+    """Background pipeline: Bedrock extraction → adapter calls → create invoice.
 
-    Uses ADAPTER_API_URL to reach ERPNext via the Adapter Lambda (VPC).
-    The API Lambda itself has no VPC access to ERPNext.
+    Reaches ERPNext through the Adapter Lambda (VPC); the API Lambda itself has
+    no VPC access. Work is attributed to `user_email` when the upload carried a
+    verified identity.
     """
-    if not ADAPTER_API_URL:
-        _update_job(job_id, {"status": "failed", "error": "ADAPTER_API_URL not configured"})
+    if not erp_client.is_configured():
+        _update_job(job_id, {"status": "failed", "error": "ERP adapter transport not configured"})
         return
 
     # Step 1: Extract with Bedrock
@@ -183,9 +191,11 @@ def _process_invoice_job(job_id: str, file_bytes: bytes, user_email: Optional[st
         "extraction": json.dumps(extraction, default=str),
     })
 
-    # Step 2: Fetch PO from ERP via adapter API (HTTP)
+    # Step 2: Fetch PO from ERP via the adapter Lambda
     try:
-        resp = requests.get(f"{ADAPTER_API_URL}/purchase-orders/{po_number}", timeout=15)
+        resp = erp_client.request(
+            "GET", f"/purchase-orders/{po_number}", user_email=user_email, timeout=15,
+        )
         resp.raise_for_status()
         po = resp.json()
     except Exception as e:
@@ -232,9 +242,11 @@ def _process_invoice_job(job_id: str, file_bytes: bytes, user_email: Optional[st
         "line_items": line_items,
     }
 
-    # Step 4: Create invoice in ERP via adapter API (HTTP)
+    # Step 4: Create invoice in ERP via the adapter Lambda
     try:
-        resp = requests.post(f"{ADAPTER_API_URL}/invoices", json=invoice_payload, timeout=30)
+        resp = erp_client.request(
+            "POST", "/invoices", json_body=invoice_payload, user_email=user_email,
+        )
         resp.raise_for_status()
         created = resp.json()
     except Exception as e:
@@ -275,7 +287,7 @@ class SchedulePaymentRequest(BaseModel):
 
 
 @router.post("/schedulePayment")
-def schedule_payment(body: SchedulePaymentRequest):
+def schedule_payment(body: SchedulePaymentRequest, request: Request):
     """Create a payment entry in ERP and record as a workflow in runs[].
 
     Records a payment_workflow in the MR lifecycle with children:
@@ -283,10 +295,12 @@ def schedule_payment(body: SchedulePaymentRequest):
     - payment analysis (from frontend)
     - decision: payment scheduled
     """
-    if not ADAPTER_API_URL:
-        raise HTTPException(status_code=500, detail="ADAPTER_API_URL not configured")
+    if not erp_client.is_configured():
+        raise HTTPException(status_code=500, detail="ERP adapter transport not configured")
 
-    # Create payment in ERP via adapter
+    # Attribute the payment to the verified caller, not a client-supplied name.
+    user_email = get_user_email(request)
+
     try:
         payload = {
             "supplier_id": body.supplier_id,
@@ -296,13 +310,16 @@ def schedule_payment(body: SchedulePaymentRequest):
         }
         if body.deductions:
             payload["deductions"] = [d.model_dump() for d in body.deductions]
-        resp = requests.post(f"{ADAPTER_API_URL}/payments", json=payload, timeout=30)
-        resp.raise_for_status()
+        resp = erp_client.request("POST", "/payments", json_body=payload, user_email=user_email)
+        if not resp.ok:
+            logger.error("Payment creation failed: %s %s", resp.status_code, resp.text)
+            raise HTTPException(
+                status_code=502, detail=f"ERP payment creation failed: {resp.text}"
+            )
         result = resp.json()
         logger.info("Payment created: %s for invoice %s", result.get("payment_id"), body.invoice_id)
-    except requests.exceptions.HTTPError as e:
-        logger.error("Payment creation failed: %s", e)
-        raise HTTPException(status_code=502, detail=f"ERP payment creation failed: {e}")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Payment scheduling error: %s", e)
         raise HTTPException(status_code=500, detail=str(e))

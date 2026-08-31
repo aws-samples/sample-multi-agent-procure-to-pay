@@ -6,26 +6,29 @@ Dashboard API — aggregated metrics for the P2P pipeline.
 Fetches ERP data via the canonical adapter API (separate Lambda in VPC).
 """
 
-import os
 import logging
 
-import requests
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+
+from services import erp_client
+from services.auth import get_user_email
 
 router = APIRouter()
 logger = logging.getLogger("p2p.dashboard")
 
 
 @router.get("/metrics")
-def get_dashboard_metrics():
+def get_dashboard_metrics(request: Request):
     """Aggregated pipeline metrics from ERP."""
-    adapter_url = os.environ.get("ADAPTER_API_URL", "")
-    if not adapter_url:
-        logger.warning("ADAPTER_API_URL not set — returning defaults")
+    if not erp_client.is_configured():
+        logger.warning("ERP adapter transport not configured — returning defaults")
         return _defaults()
 
     try:
-        resp = requests.get(f"{adapter_url}/analytics/spend-summary", timeout=10)
+        resp = erp_client.request(
+            "GET", "/analytics/spend-summary",
+            user_email=get_user_email(request), timeout=10,
+        )
         resp.raise_for_status()
         data = resp.json()
         defaults = _defaults()

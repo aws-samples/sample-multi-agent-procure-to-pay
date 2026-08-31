@@ -8,8 +8,9 @@ the chat agent runs on Lambda and uses REST adapter tools with per-user ERPNext
 credentials. This is because the MCP Gateway doesn't propagate user identity —
 it uses the Lambda's IAM role, losing per-user ERP attribution.
 
-The REST wrappers call ADAPTER_API_URL directly with x-p2p-user-email header,
-ensuring requisitions created via chat are attributed to the logged-in user.
+The REST wrappers reach the adapter through services/erp_client.py, passing the
+email from the request's verified JWT claims, so requisitions created via chat
+are attributed to the logged-in user.
 """
 
 import json
@@ -90,24 +91,23 @@ DEPT_COST_CENTER = {
 
 def _build_erp_tools_rest(user_email: str = "", role: str = "admin",
                           user_department: str = ""):
-    """Build ERP tools via REST adapter with per-user identity.
+    """Build ERP tools via the canonical adapter with per-user identity.
 
-    Calls ADAPTER_API_URL directly with x-p2p-user-email header so that
+    `user_email` comes from the verified JWT claims of the chat request, so
     write operations (create_requisition) are attributed to the logged-in user.
     """
-    import requests as _requests
     from strands import tool
+    from services import erp_client
 
-    adapter_url = os.environ.get("ADAPTER_API_URL", "")
-    if not adapter_url:
-        logger.warning("ADAPTER_API_URL not set — ERP tools unavailable for chat agent")
+    if not erp_client.is_configured():
+        logger.warning("ERP adapter transport not configured — ERP tools unavailable for chat agent")
         return []
-
-    _headers = {"x-p2p-user-email": user_email} if user_email else {}
 
     def _get(path: str, params: dict = None) -> str:
         try:
-            resp = _requests.get(f"{adapter_url}{path}", headers=_headers, params=params, timeout=15)
+            resp = erp_client.request(
+                "GET", path, params=params, user_email=user_email or None, timeout=15,
+            )
             resp.raise_for_status()
             return json.dumps(resp.json())
         except Exception as e:
@@ -115,7 +115,9 @@ def _build_erp_tools_rest(user_email: str = "", role: str = "admin",
 
     def _post(path: str, data: dict) -> str:
         try:
-            resp = _requests.post(f"{adapter_url}{path}", json=data, headers=_headers, timeout=15)
+            resp = erp_client.request(
+                "POST", path, json_body=data, user_email=user_email or None, timeout=15,
+            )
             resp.raise_for_status()
             return json.dumps(resp.json())
         except Exception as e:

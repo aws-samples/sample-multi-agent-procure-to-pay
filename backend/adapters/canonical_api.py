@@ -11,9 +11,12 @@ Gateway auto-generates MCP tools from this API's OpenAPI spec.
 import os
 import json
 import logging
+from dataclasses import dataclass
 from typing import Optional
 
-from fastapi import FastAPI, File, Form, Header, HTTPException, Query, UploadFile
+from fastapi import (
+    Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile,
+)
 from mangum import Mangum
 
 from adapters.models import (
@@ -112,57 +115,131 @@ def _get_token_manager():
     return _token_manager
 
 
-def _get_adapter(user_email: Optional[str] = None) -> ERPAdapterBase:
-    """Get the configured ERP adapter.
+# Sentinel placed in requestContext by services/erp_client.py when it invokes
+# this Lambda directly. API Gateway builds requestContext itself and copies
+# client headers into `headers` only, so an internet client cannot set this.
+_INTERNAL_CALL_KEY = "p2pInternalServiceCall"
 
-    When user_email is provided, returns a per-user adapter using that user's
-    API credentials. Falls back to the service account adapter.
+
+@dataclass(frozen=True)
+class Caller:
+    """Resolved identity for one request, and what it is allowed to use.
+
+    `email` is only ever taken from verified JWT claims for requests that
+    arrived through API Gateway. `allow_service_account` is true only for
+    trusted non-internet callers (direct Lambda invoke, AgentCore Gateway,
+    and the local dev harness), which have no end-user token to present.
     """
+
+    email: Optional[str] = None
+    allow_service_account: bool = False
+
+
+def _caller(
+    request: Request,
+    x_p2p_user_email: Optional[str] = Header(None),
+) -> Caller:
+    """Resolve the acting identity for an incoming HTTP request.
+
+    Behind API Gateway the identity comes from the JWT claims the authorizer
+    verified; the x-p2p-user-email header is ignored, since any client can set
+    it. Trusted internal callers may name a user via that header because they
+    reach this Lambda without traversing API Gateway.
+    """
+    event = request.scope.get("aws.event")
+
+    if not isinstance(event, dict):
+        # No API Gateway event: the local dev harness (uvicorn), the MCP gateway
+        # shim, or a test importing `app` directly. None of these are reachable
+        # from the internet in a deployed stack.
+        return Caller(email=x_p2p_user_email, allow_service_account=True)
+
+    request_context = event.get("requestContext") or {}
+
+    if request_context.get(_INTERNAL_CALL_KEY):
+        return Caller(email=x_p2p_user_email, allow_service_account=True)
+
+    claims = ((request_context.get("authorizer") or {}).get("jwt") or {}).get("claims") or {}
+    email = claims.get("email") or claims.get("cognito:email")
+    if not email:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthenticated: request carries no verified user identity",
+        )
+    return Caller(email=email, allow_service_account=False)
+
+
+def _build_service_adapter() -> ERPAdapterBase:
+    """Build (once) the shared full-access service-account adapter."""
     global _service_adapter
 
+    if _service_adapter is None:
+        from adapters.erpnext.client import ERPNextClient
+        from adapters.erpnext.adapter import ERPNextAdapter
+
+        _service_adapter = ERPNextAdapter(ERPNextClient(
+            base_url=os.environ.get("ERPNEXT_URL", ""),
+            api_key=os.environ.get("ERPNEXT_API_KEY", ""),
+            api_secret=os.environ.get("ERPNEXT_API_SECRET", ""),
+            username=os.environ.get("ERPNEXT_USER", ""),
+            password=os.environ.get("ERPNEXT_PASSWORD", ""),
+        ))
+
+    return _service_adapter
+
+
+def _get_adapter(caller: Optional[Caller] = None) -> ERPAdapterBase:
+    """Get the ERP adapter that `caller` is entitled to use.
+
+    Resolves to the caller's own ERPNext credentials whenever possible. The
+    shared service account is only reachable by callers that carry
+    `allow_service_account`; for everyone else a missing or unprovisioned
+    identity is an error rather than a silent escalation.
+    """
     erp_type = os.environ.get("ERP_TYPE", "erpnext")
     if erp_type != "erpnext":
         raise ValueError(f"Unknown ERP_TYPE: {erp_type}")
 
-    from adapters.erpnext.client import ERPNextClient
-    from adapters.erpnext.adapter import ERPNextAdapter
+    caller = caller or Caller()
 
-    erpnext_url = os.environ.get("ERPNEXT_URL", "")
+    if caller.email:
+        if caller.email in _user_adapters:
+            return _user_adapters[caller.email]
 
-    # Try per-user adapter
-    if user_email:
-        if user_email in _user_adapters:
-            return _user_adapters[user_email]
-
-        creds = _get_token_manager().get_credentials_for_user(user_email)
+        creds = _get_token_manager().get_credentials_for_user(caller.email)
         if creds:
+            from adapters.erpnext.client import ERPNextClient
+            from adapters.erpnext.adapter import ERPNextAdapter
+
             api_key, api_secret = creds
-            client = ERPNextClient(base_url=erpnext_url, api_key=api_key, api_secret=api_secret)
-            adapter = ERPNextAdapter(client)
+            adapter = ERPNextAdapter(ERPNextClient(
+                base_url=os.environ.get("ERPNEXT_URL", ""),
+                api_key=api_key, api_secret=api_secret,
+            ))
             # Bounded cache — evict oldest entry when full
             if len(_user_adapters) >= _MAX_USER_ADAPTERS:
                 _user_adapters.pop(next(iter(_user_adapters)))
-            _user_adapters[user_email] = adapter
-            logger.info("Created per-user adapter for %s", user_email)
+            _user_adapters[caller.email] = adapter
+            logger.info("Created per-user adapter for %s", caller.email)
             return adapter
+
+        if not caller.allow_service_account:
+            # nosemgrep -- python-logger-credential-disclosure: logs status words / exception type / resource name, not secret values
+            logger.warning("No ERPNext credentials provisioned for %s", caller.email)
+            raise HTTPException(
+                status_code=403,
+                detail="No ERPNext credentials are provisioned for this user",
+            )
         # nosemgrep -- python-logger-credential-disclosure: logs status words / exception type / resource name, not secret values
-        logger.debug("No credentials for %s, falling back to service account", user_email)
+        logger.debug("No credentials for %s, falling back to service account", caller.email)
 
-    # Service account adapter (singleton)
-    if _service_adapter is None:
-        api_key = os.environ.get("ERPNEXT_API_KEY", "")
-        api_secret = os.environ.get("ERPNEXT_API_SECRET", "")
-        username = os.environ.get("ERPNEXT_USER", "")
-        password = os.environ.get("ERPNEXT_PASSWORD", "")
-
-        client = ERPNextClient(
-            base_url=erpnext_url,
-            api_key=api_key, api_secret=api_secret,
-            username=username, password=password,
+    elif not caller.allow_service_account:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthenticated: request carries no verified user identity",
         )
-        _service_adapter = ERPNextAdapter(client)
 
-    return _service_adapter
+    return _build_service_adapter()
 
 
 # --- Health ---
@@ -180,19 +257,19 @@ def health():
 def list_suppliers(
     status: Optional[str] = Query(None, description="Filter by status: active, blocked, inactive"),
     group: Optional[str] = Query(None, description="Filter by supplier group"),
-    x_p2p_user_email: Optional[str] = Header(None),
+    caller: Caller = Depends(_caller),
 ):
     """List all suppliers in the ERP system. Optionally filter by status or group."""
-    return _get_adapter(x_p2p_user_email).list_suppliers(status=status, group=group)
+    return _get_adapter(caller).list_suppliers(status=status, group=group)
 
 
 @app.get("/suppliers/{supplier_id}", response_model=Supplier,
          summary="Get supplier details",
          operation_id="get_supplier")
-def get_supplier(supplier_id: str, x_p2p_user_email: Optional[str] = Header(None)):
+def get_supplier(supplier_id: str, caller: Caller = Depends(_caller)):
     """Get detailed information for a specific supplier by ID."""
     try:
-        return _get_adapter(x_p2p_user_email).get_supplier(supplier_id)
+        return _get_adapter(caller).get_supplier(supplier_id)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Supplier not found: {supplier_id}")
 
@@ -205,19 +282,19 @@ def get_supplier(supplier_id: str, x_p2p_user_email: Optional[str] = Header(None
 def list_items(
     group: Optional[str] = Query(None, description="Filter by item group"),
     search: Optional[str] = Query(None, description="Search by item name"),
-    x_p2p_user_email: Optional[str] = Header(None),
+    caller: Caller = Depends(_caller),
 ):
     """List all items/materials in the catalog. Optionally filter by group or search term."""
-    return _get_adapter(x_p2p_user_email).list_items(group=group, search=search)
+    return _get_adapter(caller).list_items(group=group, search=search)
 
 
 @app.get("/items/{item_id}", response_model=Item,
          summary="Get item details",
          operation_id="get_item")
-def get_item(item_id: str, x_p2p_user_email: Optional[str] = Header(None)):
+def get_item(item_id: str, caller: Caller = Depends(_caller)):
     """Get detailed information for a specific item/material by ID."""
     try:
-        return _get_adapter(x_p2p_user_email).get_item(item_id)
+        return _get_adapter(caller).get_item(item_id)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Item not found: {item_id}")
 
@@ -231,19 +308,19 @@ def list_requisitions(
     status: Optional[str] = Query(None, description="Filter by status"),
     requester: Optional[str] = Query(None, description="Filter by requester"),
     detail: bool = Query(True, description="Enrich with line items (slower). Set false for summaries."),
-    x_p2p_user_email: Optional[str] = Header(None),
+    caller: Caller = Depends(_caller),
 ):
     """List purchase requisitions (material requests). Filter by status or requester."""
-    return _get_adapter(x_p2p_user_email).list_requisitions(status=status, requester=requester, detail=detail)
+    return _get_adapter(caller).list_requisitions(status=status, requester=requester, detail=detail)
 
 
 @app.get("/requisitions/{requisition_id}", response_model=Requisition,
          summary="Get requisition details with line items",
          operation_id="get_requisition")
-def get_requisition(requisition_id: str, x_p2p_user_email: Optional[str] = Header(None)):
+def get_requisition(requisition_id: str, caller: Caller = Depends(_caller)):
     """Get a purchase requisition with all line items by ID."""
     try:
-        return _get_adapter(x_p2p_user_email).get_requisition(requisition_id)
+        return _get_adapter(caller).get_requisition(requisition_id)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Requisition not found: {requisition_id}")
 
@@ -251,22 +328,22 @@ def get_requisition(requisition_id: str, x_p2p_user_email: Optional[str] = Heade
 @app.post("/requisitions", response_model=Requisition, status_code=201,
           summary="Create a new purchase requisition",
           operation_id="create_requisition")
-def create_requisition(data: RequisitionCreate, x_p2p_user_email: Optional[str] = Header(None)):
+def create_requisition(data: RequisitionCreate, caller: Caller = Depends(_caller)):
     """Create and submit a new purchase requisition (material request)."""
     # Auto-assign line numbers if not provided
     for i, item in enumerate(data.line_items):
         if item.line_number == 0:
             item.line_number = i + 1
-    return _get_adapter(x_p2p_user_email).create_requisition(data)
+    return _get_adapter(caller).create_requisition(data)
 
 
 @app.post("/requisitions/{requisition_id}/status",
           summary="Update requisition status",
           operation_id="update_requisition_status")
 def update_requisition_status(requisition_id: str, status: str = "Ordered",
-                               x_p2p_user_email: Optional[str] = Header(None)):
+                               caller: Caller = Depends(_caller)):
     """Update a requisition's status in ERPNext (e.g., mark as Ordered after PO creation)."""
-    adapter = _get_adapter(x_p2p_user_email)
+    adapter = _get_adapter(caller)
     try:
         adapter._update_mr_ordered_status(requisition_id)
         return {"requisition_id": requisition_id, "status": status, "updated": True}
@@ -278,9 +355,9 @@ def update_requisition_status(requisition_id: str, status: str = "Ordered",
           summary="Stop a requisition",
           operation_id="stop_requisition")
 def stop_requisition(requisition_id: str,
-                     x_p2p_user_email: Optional[str] = Header(None)):
+                     caller: Caller = Depends(_caller)):
     """Stop a Material Request in ERPNext (used when a human rejects it)."""
-    adapter = _get_adapter(x_p2p_user_email)
+    adapter = _get_adapter(caller)
     try:
         adapter.stop_requisition(requisition_id)
         return {"requisition_id": requisition_id, "status": "stopped", "updated": True}
@@ -296,19 +373,19 @@ def stop_requisition(requisition_id: str,
 def list_purchase_orders(
     supplier_id: Optional[str] = Query(None, description="Filter by supplier"),
     status: Optional[str] = Query(None, description="Filter by status"),
-    x_p2p_user_email: Optional[str] = Header(None),
+    caller: Caller = Depends(_caller),
 ):
     """List purchase orders. Filter by supplier or status."""
-    return _get_adapter(x_p2p_user_email).list_purchase_orders(supplier_id=supplier_id, status=status)
+    return _get_adapter(caller).list_purchase_orders(supplier_id=supplier_id, status=status)
 
 
 @app.get("/purchase-orders/{order_id}", response_model=PurchaseOrder,
          summary="Get purchase order details with line items",
          operation_id="get_purchase_order")
-def get_purchase_order(order_id: str, x_p2p_user_email: Optional[str] = Header(None)):
+def get_purchase_order(order_id: str, caller: Caller = Depends(_caller)):
     """Get a purchase order with all line items by ID."""
     try:
-        return _get_adapter(x_p2p_user_email).get_purchase_order(order_id)
+        return _get_adapter(caller).get_purchase_order(order_id)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Purchase order not found: {order_id}")
 
@@ -316,9 +393,9 @@ def get_purchase_order(order_id: str, x_p2p_user_email: Optional[str] = Header(N
 @app.post("/purchase-orders", response_model=PurchaseOrder, status_code=201,
           summary="Create a new purchase order",
           operation_id="create_purchase_order")
-def create_purchase_order(data: PurchaseOrderCreate, x_p2p_user_email: Optional[str] = Header(None)):
+def create_purchase_order(data: PurchaseOrderCreate, caller: Caller = Depends(_caller)):
     """Create and submit a new purchase order."""
-    return _get_adapter(x_p2p_user_email).create_purchase_order(data)
+    return _get_adapter(caller).create_purchase_order(data)
 
 
 # --- Receipts ---
@@ -328,19 +405,19 @@ def create_purchase_order(data: PurchaseOrderCreate, x_p2p_user_email: Optional[
          operation_id="list_receipts")
 def list_receipts(
     order_id: Optional[str] = Query(None, description="Filter by purchase order ID"),
-    x_p2p_user_email: Optional[str] = Header(None),
+    caller: Caller = Depends(_caller),
 ):
     """List goods receipts (purchase receipts). Filter by related purchase order."""
-    return _get_adapter(x_p2p_user_email).list_receipts(order_id=order_id)
+    return _get_adapter(caller).list_receipts(order_id=order_id)
 
 
 @app.get("/receipts/{receipt_id}", response_model=Receipt,
          summary="Get receipt details with line items",
          operation_id="get_receipt")
-def get_receipt(receipt_id: str, x_p2p_user_email: Optional[str] = Header(None)):
+def get_receipt(receipt_id: str, caller: Caller = Depends(_caller)):
     """Get a goods receipt with all line items by ID."""
     try:
-        return _get_adapter(x_p2p_user_email).get_receipt(receipt_id)
+        return _get_adapter(caller).get_receipt(receipt_id)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Receipt not found: {receipt_id}")
 
@@ -348,9 +425,9 @@ def get_receipt(receipt_id: str, x_p2p_user_email: Optional[str] = Header(None))
 @app.post("/receipts", response_model=Receipt, status_code=201,
           summary="Create a new goods receipt",
           operation_id="create_receipt")
-def create_receipt(data: ReceiptCreate, x_p2p_user_email: Optional[str] = Header(None)):
+def create_receipt(data: ReceiptCreate, caller: Caller = Depends(_caller)):
     """Create and submit a new goods receipt (purchase receipt)."""
-    return _get_adapter(x_p2p_user_email).create_receipt(data)
+    return _get_adapter(caller).create_receipt(data)
 
 
 # --- Invoices ---
@@ -361,19 +438,19 @@ def create_receipt(data: ReceiptCreate, x_p2p_user_email: Optional[str] = Header
 def list_invoices(
     supplier_id: Optional[str] = Query(None, description="Filter by supplier"),
     status: Optional[str] = Query(None, description="Filter by status"),
-    x_p2p_user_email: Optional[str] = Header(None),
+    caller: Caller = Depends(_caller),
 ):
     """List purchase invoices. Filter by supplier or status."""
-    return _get_adapter(x_p2p_user_email).list_invoices(supplier_id=supplier_id, status=status)
+    return _get_adapter(caller).list_invoices(supplier_id=supplier_id, status=status)
 
 
 @app.get("/invoices/{invoice_id}", response_model=Invoice,
          summary="Get invoice details with line items",
          operation_id="get_invoice")
-def get_invoice(invoice_id: str, x_p2p_user_email: Optional[str] = Header(None)):
+def get_invoice(invoice_id: str, caller: Caller = Depends(_caller)):
     """Get a purchase invoice with all line items by ID."""
     try:
-        return _get_adapter(x_p2p_user_email).get_invoice(invoice_id)
+        return _get_adapter(caller).get_invoice(invoice_id)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Invoice not found: {invoice_id}")
 
@@ -381,15 +458,15 @@ def get_invoice(invoice_id: str, x_p2p_user_email: Optional[str] = Header(None))
 @app.post("/invoices", response_model=Invoice, status_code=201,
           summary="Create a new purchase invoice",
           operation_id="create_invoice")
-def create_invoice(data: InvoiceCreate, x_p2p_user_email: Optional[str] = Header(None)):
+def create_invoice(data: InvoiceCreate, caller: Caller = Depends(_caller)):
     """Create and submit a new purchase invoice."""
-    return _get_adapter(x_p2p_user_email).create_invoice(data)
+    return _get_adapter(caller).create_invoice(data)
 
 
 @app.post("/invoices/extract", response_model=InvoiceExtractionResult,
           summary="Extract invoice data from a document in S3",
           operation_id="extract_invoice_document")
-def extract_invoice_document(data: InvoiceExtractionRequest, x_p2p_user_email: Optional[str] = Header(None)):
+def extract_invoice_document(data: InvoiceExtractionRequest, caller: Caller = Depends(_caller)):
     """Extract structured invoice data from a PDF or image document stored in S3
     using Amazon Textract AnalyzeExpense. Returns vendor name, invoice number,
     dates, amounts, PO reference, line items, and confidence scores.
@@ -414,17 +491,17 @@ def extract_invoice_document(data: InvoiceExtractionRequest, x_p2p_user_email: O
 @app.get("/payments", response_model=PaymentList,
          summary="List payment entries",
          operation_id="list_payments")
-def list_payments(x_p2p_user_email: Optional[str] = Header(None)):
+def list_payments(caller: Caller = Depends(_caller)):
     """List all payment entries."""
-    return _get_adapter(x_p2p_user_email).list_payments()
+    return _get_adapter(caller).list_payments()
 
 
 @app.post("/payments", response_model=Payment, status_code=201,
           summary="Create a new payment",
           operation_id="create_payment")
-def create_payment(data: PaymentCreate, x_p2p_user_email: Optional[str] = Header(None)):
+def create_payment(data: PaymentCreate, caller: Caller = Depends(_caller)):
     """Create and submit a new payment entry."""
-    return _get_adapter(x_p2p_user_email).create_payment(data)
+    return _get_adapter(caller).create_payment(data)
 
 
 # --- Analytics ---
@@ -432,17 +509,17 @@ def create_payment(data: PaymentCreate, x_p2p_user_email: Optional[str] = Header
 @app.get("/analytics/spend-summary", response_model=SpendSummary,
          summary="Get spend analytics summary",
          operation_id="get_spend_summary")
-def get_spend_summary(x_p2p_user_email: Optional[str] = Header(None)):
+def get_spend_summary(caller: Caller = Depends(_caller)):
     """Get aggregate procurement spend metrics: total spend, order counts, invoice counts, overdue items."""
-    return _get_adapter(x_p2p_user_email).get_spend_summary()
+    return _get_adapter(caller).get_spend_summary()
 
 
 @app.get("/analytics/supplier-performance", response_model=SupplierPerformanceList,
          summary="Get supplier performance metrics",
          operation_id="get_supplier_performance")
-def get_supplier_performance(x_p2p_user_email: Optional[str] = Header(None)):
+def get_supplier_performance(caller: Caller = Depends(_caller)):
     """Get supplier performance data: order counts, total spend, delivery rates per supplier."""
-    return _get_adapter(x_p2p_user_email).get_supplier_performance()
+    return _get_adapter(caller).get_supplier_performance()
 
 
 @app.get("/analytics/budget-status",
@@ -450,31 +527,35 @@ def get_supplier_performance(x_p2p_user_email: Optional[str] = Header(None)):
          operation_id="get_budget_status")
 def get_budget_status(
     cost_center: Optional[str] = Query(None, description="Filter by cost center name"),
-    x_p2p_user_email: Optional[str] = Header(None),
+    caller: Caller = Depends(_caller),
 ):
     """Get budget vs actual spend for cost centers. Shows budget amount, actual spend, remaining, and utilization percentage."""
-    # Budget is a restricted doctype — per-user credentials may lack access.
-    # Fall back to service account (budget data is company-level, read-only).
+    adapter = _get_adapter(caller)
     try:
-        return _get_adapter(x_p2p_user_email).get_budget_status(cost_center=cost_center)
+        return adapter.get_budget_status(cost_center=cost_center)
     except Exception:
-        return _get_adapter(None).get_budget_status(cost_center=cost_center)
+        # Budget is a restricted doctype that per-user credentials often cannot
+        # read. This is the one sanctioned service-account read: it is scoped to
+        # company-level budget figures, is read-only, and the caller has already
+        # been authenticated by _get_adapter above.
+        logger.info("Per-user budget read failed; serving company budget via service account")
+        return _build_service_adapter().get_budget_status(cost_center=cost_center)
 
 
 @app.get("/cost-centers",
          summary="List cost centers",
          operation_id="list_cost_centers")
-def list_cost_centers(x_p2p_user_email: Optional[str] = Header(None)):
+def list_cost_centers(caller: Caller = Depends(_caller)):
     """List available cost centers for budget allocation."""
-    return _get_adapter(x_p2p_user_email).list_cost_centers()
+    return _get_adapter(caller).list_cost_centers()
 
 
 @app.get("/payment-terms",
          summary="List payment terms templates",
          operation_id="list_payment_terms")
-def list_payment_terms(x_p2p_user_email: Optional[str] = Header(None)):
+def list_payment_terms(caller: Caller = Depends(_caller)):
     """List available payment terms templates (e.g. Net 30, 2/10 Net 30). Use exact names when creating purchase orders."""
-    return _get_adapter(x_p2p_user_email).list_payment_terms()
+    return _get_adapter(caller).list_payment_terms()
 
 
 # ── File Attachments ─────────────────────────────────────────────────────────
@@ -485,11 +566,11 @@ async def attach_file(
     doctype: str = Form(...),
     docname: str = Form(...),
     is_private: str = Form("1"),
-    x_p2p_user_email: Optional[str] = Header(None),
+    caller: Caller = Depends(_caller),
 ):
     """Attach a file to an ERP document."""
     file_bytes = await file.read()
-    adapter = _get_adapter(x_p2p_user_email)
+    adapter = _get_adapter(caller)
     return adapter.attach_file(docname, doctype, file_bytes, file.filename)
 
 
@@ -567,7 +648,10 @@ def handler(event, context):
 
         logger.info("Gateway tool call: %s, user: %s, params: %s", tool_name, user_email, list(event.keys()))
 
-        adapter = _get_adapter(user_email)
+        # The Gateway is an authenticated internal caller and agents may act on
+        # system-initiated work with no end user, so the service account stays
+        # available on this path.
+        adapter = _get_adapter(Caller(email=user_email, allow_service_account=True))
 
         try:
             result = _dispatch_tool(tool_name, event, adapter)

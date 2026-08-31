@@ -130,12 +130,16 @@ class TestDynamoHelper:
 class TestAuth:
     """Tests for JWT extraction and authentication middleware."""
 
-    def _make_request(self, headers=None, aws_context=None):
+    def _make_request(self, headers=None, claims=None):
         req = MagicMock()
         req.headers = headers or {}
         req.scope = {}
-        if aws_context is not None:
-            req.scope["aws.context"] = aws_context
+        if claims is not None:
+            # API Gateway HTTP API (v2) event shape, as Mangum puts it on the scope.
+            req.scope["aws.event"] = {
+                "version": "2.0",
+                "requestContext": {"authorizer": {"jwt": {"claims": claims}}},
+            }
         return req
 
     def _make_jwt(self, claims: dict) -> str:
@@ -143,10 +147,11 @@ class TestAuth:
         payload = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
         return f"{header}.{payload}.fakesig"
 
-    def test_extract_from_x_amz_user_header(self):
+    def test_ignores_x_amz_user_header(self):
+        """Any client can set this header, so it must not authenticate anyone."""
         from services.auth import get_authenticated_user
         req = self._make_request(headers={"x-amz-user": "test.user"})
-        assert get_authenticated_user(req) == "test.user"
+        assert get_authenticated_user(req) is None
 
     def test_extract_from_jwt_cognito_username(self):
         from services.auth import get_authenticated_user
@@ -172,10 +177,28 @@ class TestAuth:
 
     def test_extract_from_api_gateway_context(self):
         from services.auth import get_authenticated_user
-        ctx = MagicMock()
-        ctx.authorizer.claims = {"cognito:username": "api-gw-user"}
-        req = self._make_request(aws_context=ctx)
+        req = self._make_request(claims={"cognito:username": "api-gw-user"})
         assert get_authenticated_user(req) == "api-gw-user"
+
+    def test_email_comes_from_verified_claims(self):
+        from services.auth import get_user_email
+        req = self._make_request(claims={"email": "maria@example.com"})
+        assert get_user_email(req) == "maria@example.com"
+
+    def test_email_ignores_client_supplied_header(self):
+        """x-p2p-user-email selects per-user ERPNext credentials downstream, so
+        trusting it would let any caller act as another user."""
+        from services.auth import get_user_email
+        req = self._make_request(
+            headers={"x-p2p-user-email": "administrator@example.com"},
+            claims={"email": "maria@example.com"},
+        )
+        assert get_user_email(req) == "maria@example.com"
+
+    def test_department_comes_from_verified_claims(self):
+        from services.auth import get_user_department
+        req = self._make_request(claims={"custom:department": "Manufacturing"})
+        assert get_user_department(req) == "Manufacturing"
 
 
 # =========================================================================

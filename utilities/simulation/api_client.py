@@ -1,10 +1,19 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""HTTP client for the Canonical P2P API with per-user identity."""
+"""Client for the Canonical P2P API with per-user identity.
 
+Transport depends on where this runs. Deployed, ADAPTER_FUNCTION_NAME is set and
+the client invokes the Adapter Lambda directly: the ERP HTTP route requires an
+end-user Cognito JWT, and a scheduled simulation has no user session to present.
+Locally, it falls back to plain HTTP against CANONICAL_API_URL.
+"""
+
+import json
 import logging
+import os
 import time
 from typing import Optional
+from urllib.parse import urlencode
 
 import requests
 
@@ -14,6 +23,13 @@ logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
 RETRY_BACKOFF = [1, 2, 4]  # seconds
+
+# Must match _INTERNAL_CALL_KEY in backend/adapters/canonical_api.py. API Gateway
+# builds requestContext itself, so an internet client cannot forge this marker.
+_INTERNAL_CALL_KEY = "p2pInternalServiceCall"
+
+# Base path the adapter's Mangum handler strips from incoming paths.
+_BASE_PATH = "/api/erp"
 
 # Persona → ERPNext email mapping (Contract C5)
 # Each document type is created under the appropriate persona.
@@ -36,10 +52,77 @@ class CanonicalAPIClient:
 
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = (base_url or CANONICAL_API_URL).rstrip("/")
+        self.function_name = os.environ.get("ADAPTER_FUNCTION_NAME", "")
         self.session = requests.Session()
         self.session.headers.update({"Content-Type": "application/json"})
+        self._lambda = None
 
     def _request(self, method: str, path: str, user_email: Optional[str] = None, **kwargs) -> dict:
+        if self.function_name:
+            return self._invoke_lambda(method, path, user_email, **kwargs)
+        return self._invoke_http(method, path, user_email, **kwargs)
+
+    def _invoke_lambda(self, method: str, path: str, user_email: Optional[str], **kwargs) -> dict:
+        if self._lambda is None:
+            import boto3
+            self._lambda = boto3.client(
+                "lambda", region_name=os.environ.get("AWS_REGION_NAME", "us-east-1")
+            )
+
+        headers = {"accept": "application/json", "host": "erp-adapter.internal"}
+        body = kwargs.get("json")
+        if body is not None:
+            headers["content-type"] = "application/json"
+        if user_email:
+            headers["x-p2p-user-email"] = user_email
+
+        event = {
+            "version": "2.0",
+            "rawPath": f"{_BASE_PATH}{path}",
+            "rawQueryString": urlencode(kwargs.get("params") or {}, doseq=True),
+            "headers": headers,
+            "requestContext": {
+                _INTERNAL_CALL_KEY: True,
+                "http": {
+                    "method": method.upper(),
+                    "path": f"{_BASE_PATH}{path}",
+                    "protocol": "HTTP/1.1",
+                    "sourceIp": "127.0.0.1",
+                },
+            },
+            "body": json.dumps(body) if body is not None else None,
+            "isBase64Encoded": False,
+        }
+
+        last_error = None
+        for attempt in range(MAX_RETRIES):
+            result = self._lambda.invoke(
+                FunctionName=self.function_name,
+                InvocationType="RequestResponse",
+                Payload=json.dumps(event).encode(),
+            )
+            payload_raw = result["Payload"].read().decode()
+
+            if result.get("FunctionError"):
+                last_error = RuntimeError(f"Adapter Lambda error: {payload_raw}")
+                if attempt < MAX_RETRIES - 1:
+                    wait = RETRY_BACKOFF[attempt]
+                    logger.warning("Adapter error on %s %s, retry in %ds", method, path, wait)
+                    time.sleep(wait)
+                    continue
+                raise last_error
+
+            payload = json.loads(payload_raw or "{}")
+            status = int(payload.get("statusCode", 502))
+            resp_body = payload.get("body") or ""
+            if status >= 400:
+                logger.error("HTTP error on %s %s: %s — %s", method, path, status, resp_body)
+                raise RuntimeError(f"ERP API returned {status}: {resp_body}")
+            return json.loads(resp_body) if resp_body else {}
+
+        raise last_error  # type: ignore[misc]
+
+    def _invoke_http(self, method: str, path: str, user_email: Optional[str], **kwargs) -> dict:
         url = f"{self.base_url}{path}"
         headers = {}
         if user_email:

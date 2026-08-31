@@ -24,19 +24,9 @@ def get_authenticated_user(request: Request) -> Optional[str]:
     For local dev, falls back to the Authorization header or a default.
     """
     # API Gateway injects verified claims into the request context
-    # via the Mangum adapter
-    scope = request.scope
-    aws_context = scope.get("aws.context")
-    if aws_context:
-        # API Gateway HTTP API with JWT authorizer puts claims in requestContext
-        authorizer = getattr(aws_context, "authorizer", None)
-        if authorizer and hasattr(authorizer, "claims"):
-            return authorizer.claims.get("cognito:username") or authorizer.claims.get("sub")
-
-    # Check for x-amz-user header (set by API Gateway from JWT claims)
-    user_header = request.headers.get("x-amz-user")
-    if user_header:
-        return user_header
+    claims = _jwt_claims(request)
+    if claims:
+        return claims.get("cognito:username") or claims.get("sub")
 
     # Local dev fallback: decode JWT if present (without full verification)
     auth_header = request.headers.get("authorization", "")
@@ -72,23 +62,30 @@ def require_authenticated_user(request: Request) -> str:
     return user
 
 
+def _jwt_claims(request: Request) -> dict:
+    """Claims the API Gateway JWT authorizer verified for this request.
+
+    API Gateway HTTP API puts them in requestContext.authorizer.jwt.claims,
+    which Mangum exposes as the raw event on the ASGI scope. Empty dict when
+    the request did not arrive through API Gateway.
+    """
+    event = request.scope.get("aws.event")
+    if not isinstance(event, dict):
+        return {}
+    authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
+    return (authorizer.get("jwt") or {}).get("claims") or {}
+
+
 def get_user_email(request: Request) -> Optional[str]:
     """Extract the user's email from verified JWT claims.
 
-    Used for X-P2P-User-Email propagation to the canonical adapter API,
-    which routes to per-user ERPNext credentials (Contract C5).
+    Identity is propagated to the canonical adapter API to select per-user
+    ERPNext credentials (Contract C5), so it must never come from a
+    client-supplied header — any caller can set one.
     """
-    scope = request.scope
-    aws_context = scope.get("aws.context")
-    if aws_context:
-        authorizer = getattr(aws_context, "authorizer", None)
-        if authorizer and hasattr(authorizer, "claims"):
-            return authorizer.claims.get("email") or authorizer.claims.get("cognito:email")
-
-    # Check for explicit header (set by API Gateway from JWT claims)
-    email_header = request.headers.get("x-p2p-user-email")
-    if email_header:
-        return email_header
+    claims = _jwt_claims(request)
+    if claims:
+        return claims.get("email") or claims.get("cognito:email")
 
     # Local dev fallback: decode JWT payload
     auth_header = request.headers.get("authorization", "")
@@ -115,12 +112,9 @@ def get_user_email(request: Request) -> Optional[str]:
 
 def get_user_department(request: Request) -> Optional[str]:
     """Extract user's department from JWT custom:department claim."""
-    scope = request.scope
-    aws_context = scope.get("aws.context")
-    if aws_context:
-        authorizer = getattr(aws_context, "authorizer", None)
-        if authorizer and hasattr(authorizer, "claims"):
-            return authorizer.claims.get("custom:department")
+    claims = _jwt_claims(request)
+    if claims:
+        return claims.get("custom:department")
 
     # Local dev fallback: decode JWT payload
     auth_header = request.headers.get("authorization", "")

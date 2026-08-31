@@ -10,8 +10,10 @@ DynamoDB tables (decisions, errors, jobs).
 import os
 import logging
 
-import requests as http_requests
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+
+from services import erp_client
+from services.auth import get_user_email
 
 router = APIRouter()
 logger = logging.getLogger("p2p.admin")
@@ -95,16 +97,16 @@ def update_mr_status(mr_id: str, status: str = "Ordered"):
 
 
 @router.get("/status")
-def data_status():
+def data_status(request: Request):
     """Quick count of ERP records via canonical adapter API."""
-    adapter_url = os.environ.get("ADAPTER_API_URL", "")
-    if not adapter_url:
-        return {"error": "ADAPTER_API_URL not set"}
+    if not erp_client.is_configured():
+        return {"error": "ERP adapter transport not configured"}
 
+    user_email = get_user_email(request)
     counts = {}
     for entity in ["suppliers", "items", "requisitions", "purchase-orders", "receipts", "invoices", "payments"]:
         try:
-            resp = http_requests.get(f"{adapter_url}/{entity}", timeout=10)
+            resp = erp_client.request("GET", f"/{entity}", user_email=user_email, timeout=10)
             resp.raise_for_status()
             data = resp.json()
             counts[entity] = data.get("total", len(data.get("items", [])))

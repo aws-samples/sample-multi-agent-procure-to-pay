@@ -37,7 +37,8 @@ async function get<T>(path: string): Promise<T> {
   const headers: Record<string, string> = { "Accept": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  // Pass user email so adapter uses per-user ERPNext credentials
+  // Only the local dev harness reads this header. Deployed, the adapter takes
+  // identity from the JWT claims API Gateway verified and ignores the header.
   try {
     const user = await getAuthUser();
     if (user.email) headers["x-p2p-user-email"] = user.email;
@@ -59,6 +60,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     "Content-Type": "application/json",
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  // Local dev harness only — see the note in get() above.
   try {
     const user = await getAuthUser();
     if (user.email) headers["x-p2p-user-email"] = user.email;

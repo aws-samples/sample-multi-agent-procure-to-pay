@@ -703,7 +703,7 @@ export class P2PAgenticStack extends cdk.Stack {
         BEDROCK_GUARDRAIL_VERSION: "DRAFT",
         // Fix OpenTelemetry StopIteration in Lambda ZIP packaging
         OTEL_PYTHON_CONTEXT: "contextvars_context",
-        // ADAPTER_API_URL is set after httpApi is created (see addEnvironment below)
+        // ADAPTER_FUNCTION_NAME is added below, alongside the matching grantInvoke
         ...Object.fromEntries(
           Object.entries(runtimeArns).map(([k, v]) => [
             `AGENTCORE_${k.toUpperCase()}_ARN`,
@@ -819,13 +819,17 @@ export class P2PAgenticStack extends cdk.Stack {
       adapterLambda
     );
 
-    // ERP data routes → Adapter Lambda (canonical P2P API → ERPNext)
-    // No JWT: also called by API Lambda and Simulation Lambda (server-to-server).
-    // Protected by: CloudFront WAF + per-user ERPNext API keys in Secrets Manager.
+    // ERP data routes → Adapter Lambda (canonical P2P API → ERPNext).
+    // Browser traffic only, and it must present a Cognito JWT: this is the ERP
+    // data plane, so an unauthenticated request here could read and write
+    // financial records. Server-to-server callers (API Lambda, Simulation
+    // Lambda) do NOT use this route — they invoke the Adapter Lambda directly
+    // via services/erp_client.py, so no unauthenticated ingress is needed.
     httpApi.addRoutes({
       path: "/api/erp/{proxy+}",
       methods: [apigwv2.HttpMethod.ANY],
       integration: adapterIntegration,
+      authorizer: jwtAuthorizer,
     });
 
     // All other API routes → API Lambda (agents, decisions, config)
@@ -843,11 +847,12 @@ export class P2PAgenticStack extends cdk.Stack {
       integration: lambdaIntegration,
     });
 
-    // Wire API Lambda to adapter API (must be after httpApi creation)
-    apiLambda.addEnvironment(
-      "ADAPTER_API_URL",
-      `https://${httpApi.httpApiId}.execute-api.${this.region}.amazonaws.com/api/erp`
-    );
+    // Wire API Lambda to the Adapter Lambda. Direct invocation, not an HTTP hop
+    // through API Gateway: the API Lambda has no end-user JWT to present for
+    // background work, and routing it over the public endpoint is what
+    // previously forced the ERP route to be authorizer-less.
+    apiLambda.addEnvironment("ADAPTER_FUNCTION_NAME", adapterLambda.functionName);
+    adapterLambda.grantInvoke(apiLambda);
 
     // Wire API Lambda to AgentCore MCP Gateway (for chat agent ERP tools)
     apiLambda.addEnvironment(
@@ -1050,7 +1055,10 @@ export class P2PAgenticStack extends cdk.Stack {
       memorySize: 512,
       environment: {
         SIMULATION_TABLE: simulationTable.tableName,
-        CANONICAL_API_URL: `https://${httpApi.httpApiId}.execute-api.${this.region}.amazonaws.com/api/erp`,
+        // Reaches the canonical ERP API by invoking the Adapter Lambda directly
+        // (see utilities/simulation/api_client.py) — the HTTP route requires an
+        // end-user JWT that a scheduled simulation does not have.
+        ADAPTER_FUNCTION_NAME: adapterLambda.functionName,
         AWS_REGION_NAME: this.region,
         SIMULATION_USE_LLM: "true",
         // Configurable delays for event scanner (hours)

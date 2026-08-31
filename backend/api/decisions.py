@@ -10,10 +10,12 @@ Supports tree structure: workflows contain nested step entries via parent_id.
 import json
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
+from services import erp_client
 from services.auth import get_authenticated_user
 from services.lifecycle import (
     add_run_entry, record_approval, record_rejection,
@@ -151,7 +153,8 @@ def record_decision(body: DecisionRequest, request: Request):
     """Record a human approval or rejection decision."""
     from services.auth import get_user_email
     auth_user = get_authenticated_user(request)
-    decided_by = get_user_email(request) or auth_user or "unknown"
+    user_email = get_user_email(request)
+    decided_by = user_email or auth_user or "unknown"
 
     # Map to canonical action names: HUMAN_APPROVED / HUMAN_REJECTED
     canonical_action = "HUMAN_APPROVED" if body.action == "APPROVE" else "HUMAN_REJECTED"
@@ -186,11 +189,11 @@ def record_decision(body: DecisionRequest, request: Request):
 
     # ERPNext status update for invoice overrides
     if body.document_type == "INVOICE" and body.action == "APPROVE":
-        _try_update_invoice_status(body.document_id)
+        _try_update_invoice_status(body.document_id, user_email=user_email)
 
     # Stop MR in ERPNext when a human rejects a purchase requisition
     if body.document_type == "PR" and body.action == "REJECT":
-        _try_stop_material_request(body.document_id)
+        _try_stop_material_request(body.document_id, user_email=user_email)
 
     return {
         "document_id": body.document_id,
@@ -200,16 +203,14 @@ def record_decision(body: DecisionRequest, request: Request):
     }
 
 
-def _try_stop_material_request(mr_id: str) -> None:
+def _try_stop_material_request(mr_id: str, user_email: Optional[str] = None) -> None:
     """Stop the Material Request in ERPNext when a human rejects it."""
     try:
-        import os
-        import requests
-
-        adapter_url = os.environ.get("ADAPTER_API_URL", "")
-        if not adapter_url:
+        if not erp_client.is_configured():
             return
-        resp = requests.post(f"{adapter_url}/requisitions/{mr_id}/stop", timeout=10)
+        resp = erp_client.request(
+            "POST", f"/requisitions/{mr_id}/stop", user_email=user_email, timeout=10,
+        )
         if resp.ok:
             logger.info("Material Request %s stopped in ERPNext", mr_id)
         else:
@@ -218,16 +219,14 @@ def _try_stop_material_request(mr_id: str) -> None:
         logger.warning("Failed to stop ERPNext MR %s: %s", mr_id, e)
 
 
-def _try_update_invoice_status(invoice_id: str) -> None:
+def _try_update_invoice_status(invoice_id: str, user_email: Optional[str] = None) -> None:
     """Update invoice status in ERPNext on override approval."""
     try:
-        import os
-        import requests
-
-        adapter_url = os.environ.get("ADAPTER_API_URL", "")
-        if not adapter_url:
+        if not erp_client.is_configured():
             return
-        resp = requests.post(f"{adapter_url}/invoices/{invoice_id}/submit", timeout=10)
+        resp = erp_client.request(
+            "POST", f"/invoices/{invoice_id}/submit", user_email=user_email, timeout=10,
+        )
         if resp.ok:
             logger.info("Invoice %s submitted in ERPNext", invoice_id)
     except Exception as e:
