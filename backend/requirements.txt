@@ -12,5 +12,5 @@ strands-agents-tools>=0.1.0
 bedrock-agentcore>=1.4.0
 pyyaml>=6.0
 hypothesis>=6.100.0
-moto>=5.0.0
+moto>=5.2.2
 requests>=2.31.0
