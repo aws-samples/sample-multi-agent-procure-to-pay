@@ -16,16 +16,16 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.21",
     "@radix-ui/react-tooltip": "^1.2.16",
-    "aws-amplify": "^6.20.0",
+    "aws-amplify": "^6.22.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "i18next": "^26.4.2",
-    "lucide-react": "^1.46.0",
+    "lucide-react": "^1.47.0",
     "motion": "^12.43.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-i18next": "^17.0.14",
-    "react-router-dom": "^7.18.3",
+    "react-i18next": "^17.0.15",
+    "react-router-dom": "^7.18.4",
     "recharts": "^3.10.1",
     "tailwind-merge": "^3.7.0"
   },
@@ -42,7 +42,7 @@
     "globals": "^16.5.0",
     "tailwindcss": "^4.2.2",
     "typescript": "~5.9.3",
-    "typescript-eslint": "^8.70.0",
+    "typescript-eslint": "^8.70.1",
     "vite": "^7.3.1"
   }
 }
