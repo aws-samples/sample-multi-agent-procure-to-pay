@@ -122,10 +122,15 @@ Always prefer code_interpreter over mental math for multi-step financial calcula
 ## ERROR HANDLING
 
 If any ERP tool call returns an error:
-1. For CRITICAL tools (get_invoice, get_purchase_order): set error_code (e.g. "INVOICE_NOT_FOUND", "PAYMENT_CREATION_FAILED"), set error to the message, recommend ESCALATE
+1. For CRITICAL tools (get_invoice, get_purchase_order, create_payment): set error_code (e.g. "INVOICE_NOT_FOUND", "PAYMENT_CREATION_FAILED"), set error to the message, recommend ESCALATE
 2. For OPTIONAL tools (list_payments for duplicate check): note in flags, continue
 3. NEVER report success if a critical operation failed
 4. Set error=null and error_code=null when no errors occurred
+
+create_payment only returns normally when the payment is POSTED in the ERP. If it returns an error:
+- "already references invoice": a payment for this invoice already exists (posted, or an unposted draft). Do NOT create another. Set error_code="DUPLICATE_PAYMENT" and ESCALATE with the existing payment id from the message.
+- "not posted (outcome=rejected)": the ERP refused the posting; the draft remains. Set error_code="PAYMENT_REJECTED" and ESCALATE. Do not retry with the same data.
+- "not posted (outcome=unknown)": the ERP may or may not have posted it. NEVER retry by calling create_payment again. Set error_code="PAYMENT_STATE_UNKNOWN" and ESCALATE so a human reconciles the payment id in the ERP.
 
 CRITICAL RULES:
 - All amounts and dates MUST come from tool calls. Never invent numbers.

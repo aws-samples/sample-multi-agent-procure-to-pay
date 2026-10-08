@@ -10,7 +10,10 @@ import io
 import logging
 from typing import Optional
 
+import requests
+
 from adapters.erp_adapter_base import ERPAdapterBase
+from adapters.errors import DuplicatePaymentError, PaymentNotPostedError
 from adapters.models import (
     Supplier, SupplierList,
     Item, ItemList,
@@ -563,6 +566,26 @@ class ERPNextAdapter(ERPAdapterBase):
         return PaymentList(payments=payments, total_count=len(payments))
 
     def create_payment(self, data: PaymentCreate) -> Payment:
+        """Create AND post a Payment Entry.
+
+        A normal return means the entry is posted (docstatus 1). Every other
+        outcome raises, because in ERPNext `insert` only creates a draft and
+        `submit` is the step that moves money; a caller handed a draft that
+        looks like a payment will retry and pay the supplier twice.
+
+        Raises:
+            DuplicatePaymentError: a Payment Entry (draft or posted) already
+                references `data.invoice_id`. Nothing was inserted.
+            PaymentNotPostedError: the entry was inserted but is not posted.
+                `outcome` is "rejected" (ERPNext refused it, still a draft) or
+                "unknown" (the submit call failed without saying whether it
+                applied, and the re-read could not confirm). Never remedy an
+                "unknown" by creating another payment.
+            ValueError: ERPNext did not create the draft at all.
+        """
+        if data.invoice_id:
+            self._assert_no_payment_for_invoice(data.invoice_id)
+
         doc_data = {
             "payment_type": "Pay",
             "party_type": "Supplier",
@@ -577,13 +600,18 @@ class ERPNextAdapter(ERPAdapterBase):
             "company": DEFAULT_COMPANY,
         }
         if data.invoice_id:
-            # Fetch invoice to get the full outstanding for allocation
-            invoice_outstanding = data.amount
+            # The allocation must be the invoice's real outstanding amount. If
+            # that cannot be read, stop: guessing it from the caller-supplied
+            # amount changes the write-off the deduction logic computes below.
             try:
                 inv = self.client.get("Purchase Invoice", data.invoice_id)
-                invoice_outstanding = float(inv.get("outstanding_amount", 0) or inv.get("grand_total", 0) or data.amount)
-            except Exception:
-                pass  # nosec B110 -- fall back to caller-supplied amount if fetch fails
+            except Exception as e:
+                raise ValueError(
+                    f"Cannot read Purchase Invoice {data.invoice_id} to allocate payment: {e}"
+                ) from e
+            invoice_outstanding = float(
+                inv.get("outstanding_amount", 0) or inv.get("grand_total", 0) or data.amount
+            )
 
             # Allocate the full outstanding amount against the invoice
             doc_data["references"] = [{
@@ -615,16 +643,84 @@ class ERPNextAdapter(ERPAdapterBase):
                 }]
 
         doc = self.client.insert("Payment Entry", doc_data)
-        if doc and doc.get("name"):
-            try:
-                self.client.submit("Payment Entry", doc["name"])
-            except Exception as e:
-                logger.warning(f"Payment created but submit failed: {e}")
-            record = self.client.get("Payment Entry", doc["name"])
-            mapped = map_record(record, PAYMENT_TO_CANONICAL)
-            mapped["status"] = map_status_to_canonical(record.get("status", ""), "Payment Entry")
-            return Payment(**mapped)
-        raise ValueError("Failed to create payment in ERPNext")
+        if not doc or not doc.get("name"):
+            raise ValueError("Failed to create payment in ERPNext")
+        name = doc["name"]
+
+        # Post the draft. Classify a failure by what it tells us about ERPNext's
+        # state: a 4xx is a validation rejection (definitely still a draft);
+        # anything else (timeout, dropped connection, 5xx) says nothing about
+        # whether the submit applied.
+        outcome: Optional[str] = None
+        detail = ""
+        try:
+            self.client.submit("Payment Entry", name)
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response is not None else None
+            outcome = "rejected" if status is not None and 400 <= status < 500 else "unknown"
+            detail = f"submit returned HTTP {status}: {e}"
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            outcome = "unknown"
+            detail = f"submit did not complete: {type(e).__name__}: {e}"
+        except Exception as e:
+            outcome = "unknown"
+            detail = f"submit failed: {type(e).__name__}: {e}"
+
+        # Re-read the authoritative state. This resolves most "unknown" cases
+        # and guards against a submit that returned success but did not stick.
+        try:
+            record = self.client.get("Payment Entry", name)
+        except Exception as e:
+            raise PaymentNotPostedError(
+                name, "unknown",
+                (detail + "; " if detail else "") + f"could not re-read entry: {e}",
+            ) from e
+
+        if int(record.get("docstatus", 0) or 0) != 1:
+            if outcome is None:
+                # submit() raised nothing, yet the entry is not posted.
+                outcome, detail = "unknown", f"submit returned without error but docstatus is {record.get('docstatus')}"
+            logger.error("Payment Entry %s not posted (%s): %s", name, outcome, detail)
+            raise PaymentNotPostedError(name, outcome, detail)
+
+        if outcome is not None:
+            logger.warning("Payment Entry %s posted despite submit error (%s); treating as success", name, detail)
+
+        mapped = map_record(record, PAYMENT_TO_CANONICAL)
+        mapped["status"] = map_status_to_canonical(record.get("status", ""), "Payment Entry")
+        return Payment(**mapped)
+
+    def _assert_no_payment_for_invoice(self, invoice_id: str) -> None:
+        """Idempotency guard: refuse to insert a second Payment Entry for an invoice.
+
+        Checks drafts and posted entries (docstatus 0 and 1; cancelled entries
+        are excluded). If the check itself fails we raise rather than proceed,
+        because "could not verify" must not become "paid twice".
+        """
+        try:
+            existing = self.client.get_list(
+                "Payment Entry",
+                fields=["name", "docstatus", "status"],
+                # Child-table filter: Payment Entry Reference rows pointing at this invoice.
+                filters=[
+                    ["Payment Entry Reference", "reference_name", "=", invoice_id],
+                    ["Payment Entry Reference", "reference_doctype", "=", "Purchase Invoice"],
+                    ["docstatus", "<", 2],
+                ],
+                limit=5,
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Cannot verify existing payments for invoice {invoice_id}; refusing to create one: {e}"
+            ) from e
+
+        if not existing:
+            return
+        # Prefer reporting a posted entry over a draft if both exist.
+        existing.sort(key=lambda r: -int(r.get("docstatus", 0) or 0))
+        hit = existing[0]
+        status = "submitted" if int(hit.get("docstatus", 0) or 0) == 1 else "draft"
+        raise DuplicatePaymentError(invoice_id, hit["name"], status)
 
     # --- Analytics ---
 
