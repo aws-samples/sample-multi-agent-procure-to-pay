@@ -50,7 +50,8 @@ class PaymentNotPostedError(ERPWriteError):
     """
 
     def __init__(self, payment_id: str, outcome: str, detail: str):
-        assert outcome in ("rejected", "unknown")
+        if outcome not in ("rejected", "unknown"):
+            raise ValueError(f"outcome must be 'rejected' or 'unknown', got {outcome!r}")
         self.payment_id = payment_id
         self.outcome = outcome
         self.detail = detail
