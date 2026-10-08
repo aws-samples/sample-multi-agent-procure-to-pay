@@ -11,7 +11,11 @@
     "cdk": "cdk",
     "deploy": "cdk deploy",
     "destroy": "cdk destroy",
-    "synth": "cdk synth"
+    "synth": "cdk synth",
+    "e2e:synth": "cdk --app \"npx ts-node bin/e2e.ts\" synth P2PAuthE2EStack",
+    "e2e:deploy": "cdk --app \"npx ts-node bin/e2e.ts\" deploy P2PAuthE2EStack --require-approval never",
+    "e2e:destroy": "cdk --app \"npx ts-node bin/e2e.ts\" destroy P2PAuthE2EStack --force",
+    "e2e:test": "python3 tests/e2e/run_e2e.py"
   },
   "dependencies": {
     "@aws-cdk/aws-bedrock-agentcore-alpha": "^2.248.0-alpha.0",

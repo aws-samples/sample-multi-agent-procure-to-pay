@@ -1,0 +1,7 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Live end-to-end harness (tests/e2e/run_e2e.py). Needs AWS credentials and a
+# deployed P2PAuthE2EStack (npm run e2e:deploy).
+boto3==1.40.49
+requests==2.32.5
+pycognito==2024.5.1

@@ -30,6 +30,8 @@ import * as bedrock from "aws-cdk-lib/aws-bedrock";
 import * as agentcore from "@aws-cdk/aws-bedrock-agentcore-alpha";
 import * as bedrockagentcore from "aws-cdk-lib/aws-bedrockagentcore";
 import { Construct } from "constructs";
+import { P2PAuth } from "./p2p-auth";
+import { P2PToolPolicyEngine } from "./p2p-policy";
 
 /**
  * P2P Agentic Platform Stack.
@@ -45,28 +47,8 @@ export class P2PAgenticStack extends cdk.Stack {
     const prefix = "p2p-dev";
 
     // =====================================================================
+    // Cognito (user pool, app clients, groups, pre-token trigger)
     // =====================================================================
-    // Cognito User Pool
-    // =====================================================================
-
-    const userPool = new cognito.UserPool(this, "UserPool", {
-      userPoolName: `${prefix}-users`,
-      selfSignUpEnabled: false,
-      signInAliases: { email: true },
-      autoVerify: { email: true },
-      passwordPolicy: {
-        minLength: 8,
-        requireLowercase: true,
-        requireUppercase: true,
-        requireDigits: true,
-        requireSymbols: false,
-      },
-      customAttributes: {
-        role: new cognito.StringAttribute({ maxLen: 50 }),
-        department: new cognito.StringAttribute({ maxLen: 100 }),
-      },
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
 
     // Resolve frontend FQDN early so Cognito callback URLs can reference it.
     // This duplicates the domain config logic below, but Cognito client must be
@@ -77,72 +59,14 @@ export class P2PAgenticStack extends cdk.Stack {
       ? (_frontendDomainPrefix ? `${_frontendDomainPrefix}.${_hostedZoneName}` : _hostedZoneName)
       : undefined;
 
-    const frontendClient = userPool.addClient("FrontendClient", {
-      userPoolClientName: `${prefix}-frontend`,
-      authFlows: { userSrp: true },
-      oAuth: {
-        flows: { authorizationCodeGrant: true },
-        scopes: [
-          cognito.OAuthScope.OPENID,
-          cognito.OAuthScope.EMAIL,
-          cognito.OAuthScope.PROFILE,
-        ],
-        callbackUrls: [
-          "http://localhost:5173/",
-          "http://localhost:5174/",
-          ...(_frontendFqdn ? [`https://${_frontendFqdn}/`] : []),
-        ],
-        logoutUrls: [
-          "http://localhost:5173/",
-          "http://localhost:5174/",
-          ...(_frontendFqdn ? [`https://${_frontendFqdn}/`] : []),
-        ],
-      },
-      accessTokenValidity: cdk.Duration.hours(1),
-      idTokenValidity: cdk.Duration.hours(1),
-      refreshTokenValidity: cdk.Duration.days(30),
-      generateSecret: false,
+    // Role authorization design is documented on P2PAuth: users
+    // cannot write custom:* attributes, and the role claim comes from Groups.
+    const auth = new P2PAuth(this, "Auth", {
+      prefix,
+      erpnextUrl: props.erpnextUrl,
+      frontendFqdn: _frontendFqdn,
     });
-
-    // ERPNext SSO client — confidential (with secret) for server-side OAuth2 flow
-    const erpnextSsoClient = userPool.addClient("ERPNextSSOClient", {
-      userPoolClientName: `${prefix}-erpnext-sso`,
-      generateSecret: true,
-      authFlows: { userSrp: true },
-      oAuth: {
-        flows: { authorizationCodeGrant: true },
-        scopes: [
-          cognito.OAuthScope.OPENID,
-          cognito.OAuthScope.EMAIL,
-          cognito.OAuthScope.PROFILE,
-        ],
-        callbackUrls: [
-          `${props.erpnextUrl}/api/method/frappe.integrations.oauth2_logins.custom/amazon_cognito`,
-        ],
-        logoutUrls: [
-          props.erpnextUrl,
-        ],
-      },
-      accessTokenValidity: cdk.Duration.hours(1),
-      idTokenValidity: cdk.Duration.hours(1),
-      refreshTokenValidity: cdk.Duration.days(30),
-    });
-
-    const cognitoDomain = userPool.addDomain("CognitoDomain", {
-      cognitoDomain: {
-        domainPrefix: `${prefix}-${this.account}`,
-      },
-    });
-
-    // Cognito Groups — role-based access (supplements custom:role attribute)
-    const groups = ["requester", "approver", "ap_clerk", "procurement", "executive"];
-    for (const group of groups) {
-      new cognito.CfnUserPoolGroup(this, `Group_${group}`, {
-        userPoolId: userPool.userPoolId,
-        groupName: group,
-        description: `P2P ${group} role`,
-      });
-    }
+    const { userPool, frontendClient, cognitoDomain } = auth;
 
     // =====================================================================
     // Secrets Manager — ERPNext credentials
@@ -383,117 +307,15 @@ export class P2PAgenticStack extends cdk.Stack {
     // AgentCore Policy Engine (Cedar authorization on tool calls)
     // =====================================================================
 
-    const policyEngine = new bedrockagentcore.CfnPolicyEngine(
-      this,
-      "P2PPolicyEngine",
-      {
-        name: `${prefix.replace(/-/g, "_")}_policy`,
-        description:
-          "Cedar-based authorization for P2P procurement tools. " +
-          "Enforces role-based access: read for all, write per role.",
-      }
-    );
-
-    // Load Cedar policies from file — one CfnPolicy per permit/forbid statement
-    // (AgentCore CfnPolicy expects exactly one policy per resource)
-    const cedarRaw = fs.readFileSync(
-      "policies/p2p-procurement.cedar",
-      "utf-8"
-    );
-    // Strip comments and split on permit/forbid boundaries
-    const stripped = cedarRaw
-      .split("\n")
-      .filter((line: string) => !line.trimStart().startsWith("//"))
-      .join("\n")
-      .trim();
-    const statements = stripped
-      .split(/(?=(?:permit|forbid)\()/)
-      .map((s: string) => s.trim())
-      .filter((s: string) => s.startsWith("permit") || s.startsWith("forbid"));
-
-    const policyNames = [
-      "iam_full_access",
-      "oauth_read_access",
-      "requisition_write",
-      "po_receipt_write",
-      "invoice_write",
-      "payment_write",
-    ];
-
-    // AgentCore requires tool-scoped policies to reference a specific Gateway ARN.
-    // Construct the ARN from the gateway ID (L2 doesn't expose attrGatewayArn).
+    // Policies from policies/p2p-procurement.cedar, attached in ENFORCE mode.
+    // Write permits key on the server-asserted p2p_role claim (see P2PAuth).
+    const toolPolicy = new P2PToolPolicyEngine(this, "ToolPolicy", {
+      prefix,
+      gateway,
+      gatewayTarget,
+    });
+    const policyEngine = toolPolicy.policyEngine;
     const gatewayArn = `arn:aws:bedrock-agentcore:${this.region}:${this.account}:gateway/${gateway.gatewayId}`;
-
-    statements.forEach((statement: string, i: number) => {
-      const name = policyNames[i] || `policy_${i}`;
-      // Replace generic resource type with the specific gateway resource
-      const scopedStatement = statement.replace(
-        /resource is AgentCore::Gateway/g,
-        `resource == AgentCore::Gateway::"${gatewayArn}"`
-      );
-      const policy = new bedrockagentcore.CfnPolicy(
-        this,
-        `Policy_${name}`,
-        {
-          name: `${prefix.replace(/-/g, "_")}_${name}`,
-          policyEngineId: policyEngine.attrPolicyEngineId,
-          definition: {
-            cedar: { statement: scopedStatement },
-          },
-          description: `P2P Cedar policy: ${name.replace(/_/g, " ")}`,
-        }
-      );
-      policy.addDependency(policyEngine);
-      // Policies reference erp___ tool actions that only exist after the
-      // GatewayTarget is created (tool registration happens at target creation).
-      const targetL1 = gatewayTarget.node.defaultChild as cdk.CfnResource;
-      if (targetL1) policy.addDependency(targetL1);
-    });
-
-    // Attach policy engine to Gateway via L1 escape hatch.
-    // The L2 Gateway construct doesn't expose policyEngineConfiguration,
-    // so we override the underlying CloudFormation property.
-    const cfnGateway = gateway.node.defaultChild as bedrockagentcore.CfnGateway;
-    cfnGateway.addPropertyOverride("PolicyEngineConfiguration", {
-      Arn: policyEngine.attrPolicyEngineArn,
-      Mode: "ENFORCE",
-    });
-
-    // Grant the Gateway's service role permission to access the PolicyEngine.
-    // The Gateway calls AuthorizeAction on its own ARN during creation when
-    // a PolicyEngine is attached. We must grant on both the policy engine
-    // and all gateway resources in the account.
-    const gatewayRole = gateway.node.findChild("ServiceRole") as iam.IRole;
-    // Per AWS docs: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-permissions.html
-    // Gateway execution role needs these 3 actions for Policy Engine integration.
-    const policyGrant = gatewayRole.addToPrincipalPolicy(
-      new iam.PolicyStatement({
-        sid: "PolicyEngineConfiguration",
-        actions: ["bedrock-agentcore:GetPolicyEngine"],
-        resources: [policyEngine.attrPolicyEngineArn],
-      })
-    );
-    gatewayRole.addToPrincipalPolicy(
-      new iam.PolicyStatement({
-        sid: "PolicyEngineAuthorization",
-        actions: [
-          "bedrock-agentcore:AuthorizeAction",
-          "bedrock-agentcore:PartiallyAuthorizeActions",
-        ],
-        resources: [
-          policyEngine.attrPolicyEngineArn,
-          `arn:aws:bedrock-agentcore:${this.region}:${this.account}:gateway/*`,
-        ],
-      })
-    );
-
-    // Ensure the IAM policy is fully created before the Gateway tries to use it.
-    // Without this, CloudFormation may create the Gateway before the policy propagates.
-    if (policyGrant.policyDependable) {
-      cfnGateway.node.addDependency(policyGrant.policyDependable);
-    }
-    // Also ensure the PolicyEngine itself exists before Gateway references it
-    cfnGateway.addDependency(policyEngine);
 
     // SNS topic for Cedar policy deny alerts — subscribe admin email post-deploy
     const cedarDenyTopic = new sns.Topic(this, "CedarDenyTopic", {
@@ -1160,7 +982,7 @@ export class P2PAgenticStack extends cdk.Stack {
       value: identityPool.ref,
     });
     new cdk.CfnOutput(this, "ERPNextSSOClientId", {
-      value: erpnextSsoClient.userPoolClientId,
+      value: auth.erpnextSsoClient.userPoolClientId,
       description: "Cognito app client ID for ERPNext Social Login (confidential, with secret)",
     });
     new cdk.CfnOutput(this, "ApiUrl", {

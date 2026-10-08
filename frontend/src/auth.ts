@@ -82,10 +82,30 @@ export async function getAuthUser(): Promise<AuthUser> {
     username: attrs.email || user.username,
     displayName,
     email: attrs.email || "",
-    role: attrs["custom:role"] || "",
+    role: await getAssertedRole(),
     sapUser: attrs["custom:sap_user"] || "",
     department: attrs["custom:department"] || "",
   };
+}
+
+/**
+ * The user's P2P role as asserted by the server.
+ *
+ * Read from the `p2p_role` ID-token claim, which the Cognito Pre Token
+ * Generation trigger derives from Group membership. Deliberately NOT read from
+ * the `custom:role` user attribute: attributes are user-editable in principle,
+ * so they are never an authorization input anywhere in this app. Falls back to
+ * the raw `cognito:groups` claim for pools without the trigger. Returns "" when
+ * the user has no group, which resolveRole() maps to the least-privileged UI.
+ */
+async function getAssertedRole(): Promise<string> {
+  const session = await fetchAuthSession();
+  const payload = session.tokens?.idToken?.payload ?? {};
+  const asserted = payload["p2p_role"];
+  if (typeof asserted === "string" && asserted) return asserted;
+  const groups = payload["cognito:groups"];
+  if (Array.isArray(groups) && typeof groups[0] === "string") return groups[0];
+  return "";
 }
 
 export async function getToken(): Promise<string | null> {

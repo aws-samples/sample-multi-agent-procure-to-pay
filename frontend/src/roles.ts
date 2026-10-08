@@ -9,19 +9,24 @@
  *   - ap_clerk     → handles invoices, 3-way match, payments, uploads invoices
  *   - executive    → read-only dashboards, KPIs, spend analytics, ROI
  *   - procurement  → full operational access: sourcing, POs, command center, config
- *   - admin        → everything (fallback for unknown roles)
+ *   - admin        → everything (explicit "admin" group only)
+ *
+ * Unknown or missing roles resolve to `requester` (least privilege). The role
+ * comes from the server-asserted `p2p_role` token claim (see auth.ts); this
+ * gating is a UX convenience, the real authorization boundary is Cedar on the
+ * MCP Gateway plus per-user ERPNext permissions.
  */
 
 export type P2PRole = "requester" | "approver" | "ap_clerk" | "executive" | "procurement" | "admin";
 
 export function resolveRole(roleAttr: string | undefined): P2PRole {
   const r = (roleAttr || "").toLowerCase().trim();
-  if (r === "requester" || r === "requestor") return "requester";
+  if (r === "admin") return "admin";
   if (r === "approver" || r === "manager") return "approver";
   if (r === "ap_clerk" || r === "ap_analyst" || r === "ap") return "ap_clerk";
   if (r === "executive" || r === "exec" || r === "cfo") return "executive";
   if (r === "procurement" || r === "procurement_officer" || r === "proc") return "procurement";
-  return "admin";
+  return "requester";
 }
 
 interface NavItem { label: string; href: string }

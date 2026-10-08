@@ -1,0 +1,7 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Test-only dependencies for infra/tests. Run from infra/: python -m pytest tests
+pytest==8.3.4
+# Rust Cedar bindings — evaluates policies/p2p-procurement.cedar in the
+# role authorization test exactly as AgentCore Gateway would.
+cedarpy==4.12.1

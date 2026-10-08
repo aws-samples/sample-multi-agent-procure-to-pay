@@ -46,6 +46,27 @@ class TestRoleCoverage:
         assert policy_text.count('"admin"') >= 4
 
 
+class TestRoleClaimSource:
+    """Role must come from a server-asserted claim, never a user-writable
+    Cognito attribute."""
+
+    def test_no_user_writable_attribute_in_conditions(self, policy_text):
+        conditions = re.findall(r"when\s*\{(.*?)\}", policy_text, re.DOTALL)
+        assert conditions, "expected role-conditioned permits"
+        for cond in conditions:
+            assert "custom:" not in cond, (
+                "Cedar condition keys on a custom: Cognito attribute. These are "
+                "user-writable via UpdateUserAttributes; use the p2p_role claim."
+            )
+
+    def test_every_write_permit_keys_on_p2p_role(self, policy_text):
+        conditions = re.findall(r"when\s*\{(.*?)\}", policy_text, re.DOTALL)
+        assert len(conditions) == 4, "expected 4 role-conditioned write permits"
+        for cond in conditions:
+            assert 'principal.hasTag("p2p_role")' in cond
+            assert 'principal.getTag("p2p_role")' in cond
+
+
 class TestReadToolCoverage:
     READ_TOOLS = [
         "list_suppliers", "get_supplier", "list_items", "get_item",

@@ -114,6 +114,14 @@ graph TB
 
 The flow moves top-down from the user's browser through CloudFront and API Gateway into two Lambda functions — one for operational API routes (dashboard, decisions, chat) and one for ERP data access (the canonical adapter). The 8 AgentCore Runtimes sit in a separate compute layer and access ERP data exclusively through the MCP Gateway, which enforces Cedar RBAC policies before invoking the adapter Lambda. The dashed lines to Bedrock services (Memory, Code Interpreter) indicate optional/async integrations. The ERPNext box at the bottom is the single source of truth; the dashed line to SAP/Infor/Workday shows the adapter pattern allows future ERP swaps without changing agent code.
 
+### Where a user's role comes from
+
+The Cedar policies decide which ERP write tools an OAuth user may call based on the `p2p_role` JWT claim. That claim is **server-asserted**: a Cognito Pre Token Generation trigger (`infra/lambda/pre_token_generation/handler.py`) derives it from the user's Cognito Group membership, which only operators can change (`AdminAddUserToGroup`). The same trigger strips the `custom:role` user attribute from the token.
+
+Cognito user attributes are not an authorization input anywhere in this system. Both app clients set an explicit `writeAttributes` list containing only display attributes (given name, family name, etc.), so a signed-in user cannot modify `custom:role` or `custom:department` through `UpdateUserAttributes`. The two controls are independent: even if an attribute were writable, no policy reads it; even if a policy read it, the client cannot write it. `infra/tests/test_role_authorization.py` evaluates the real Cedar policy file against simulated attribute writes on every CI run, and `infra/tests/e2e/run_e2e.py` checks the same chain against a live Cognito pool and a Cognito-JWT-authenticated AgentCore Gateway (see `infra/README.md`, Tests).
+
+Note on the current deployment: the MCP Gateway uses IAM (SigV4) inbound auth, so tool calls from the AgentCore Runtimes arrive as `AgentCore::IamEntity` principals. The `OAuthUser` role policies apply when the Gateway is configured for Cognito JWT inbound auth (`GatewayAuthorizer.usingCognito`). The trigger is registered as V2_0, so `p2p_role` is present on both the ID and the access token and either may be presented.
+
 ---
 
 ## 2. Data Flow Diagrams

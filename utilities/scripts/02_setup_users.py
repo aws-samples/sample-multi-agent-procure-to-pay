@@ -288,6 +288,8 @@ def create_cognito_user(client, pool_id: str, persona: dict, password: str) -> b
                 {"Name": "given_name", "Value": persona.get("first_name", "")},
                 {"Name": "family_name", "Value": persona.get("last_name", "")},
                 {"Name": "name", "Value": f"{persona.get('first_name', '')} {persona.get('last_name', '')}".strip()},
+                # Informational only (display/legacy). Authorization is driven by
+                # the Cognito Group below, which end users cannot change.
                 {"Name": "custom:role", "Value": persona["cognito_role"]},
                 {"Name": "custom:department", "Value": persona.get("department", "")},
             ],
@@ -296,13 +298,17 @@ def create_cognito_user(client, pool_id: str, persona: dict, password: str) -> b
         client.admin_set_user_password(
             UserPoolId=pool_id, Username=username, Password=password, Permanent=True,
         )
+        # Group membership is the source of the p2p_role claim that the Cedar
+        # policies authorize on. A user with no group has no write permissions.
         try:
             client.admin_add_user_to_group(
                 UserPoolId=pool_id, Username=username, GroupName=persona["cognito_group"],
             )
         except client.exceptions.ResourceNotFoundException:
-            # Group doesn't exist yet — non-fatal for user setup.
-            pass  # nosec B110
+            print(
+                f"  ⚠️  [Cognito] group '{persona['cognito_group']}' not found — "
+                f"{username} will have NO p2p_role claim. Deploy P2PAgenticStack first."
+            )
 
         print(f"  ✅ [Cognito] {username} ({persona['cognito_role']}) — {persona['email']}")
         return True
